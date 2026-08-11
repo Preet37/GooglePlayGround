@@ -1,0 +1,17 @@
+=== 3D PRINTING & SLICING REFERENCE GUIDE ===
+
+# SECTION 1: MATERIAL SELECTION & TECHNICAL PROPERTIES
+- PLA (Polylactic Acid): Easy to print, low warping, non-toxic, ideal for visual models and prototypes. Print Temp: 200-220°C, Bed Temp: 50-60°C. Density: 1.24 g/cm³. Note: Low heat resistance (deforms above 55°C). Not naturally waterproof/food-safe without sealing due to layer line micro-gaps.
+- PETG (Polyethylene Terephthalate Glycol): High mechanical strength, excellent layer adhesion, chemical & moisture resistant. Print Temp: 230-250°C, Bed Temp: 70-80°C. Density: 1.27 g/cm³. Ideal for functional parts, mugs/containers (with food-safe coating), outdoor gear, and water-tight prints.
+- TPU (Thermoplastic Polyurethane): Flexible, rubber-like, high impact resistance. Print Temp: 220-240°C, Bed Temp: 40-60°C. Requires slow print speeds (20-40 mm/s) and direct drive extruders.
+
+# SECTION 2: SLICING PARAMETERS & STRUCTURAL INTEGRITY
+- Layer Height: 0.12mm (Ultra Detail), 0.20mm (Standard Balance), 0.28mm (Draft/Fast).
+- Wall Loops / Perimeters: 2 walls for decorative, 3-4 walls for standard, 5+ walls for heavy load/watertight parts.
+- Infill Patterns: Gyroid (equal strength in all axes, best for liquids/flexing), Grid (fast, high vertical strength), Honeycomb (maximum impact absorption).
+- Water-tight & Food Safety Design: For drinking mugs or liquid containers, print in PETG with 4 wall loops, 100% bottom solid layers, Gyroid infill, 102% extrusion multiplier, and line width set to 0.45mm. Apply food-grade epoxy resin internally to seal micro-porous layer gaps.
+
+# SECTION 3: FAILURE DIAGNOSTICS & TROUBLESHOOTING
+- Stringing & Oozing: Caused by damp filament or insufficient retraction. Solution: Dry PETG/TPU at 65°C for 6 hours; increase retraction distance by 0.5mm and retraction speed to 45 mm/s.
+- First Layer Bed Adhesion / Warping: Caused by dirty build plate or improper bed temp. Solution: Wash PEI plate with dish soap and warm water; use a 5mm brim for sharp corner geometries.
+- Heart-Shaped Mug & Complex Organic Geometry Slicing: Heart shapes feature a sharp internal cleft/crevice. Ensure inner wall acceleration is reduced to 50 mm/s to prevent perimeter separation at the center dip.

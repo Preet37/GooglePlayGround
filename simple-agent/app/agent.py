@@ -84,7 +84,9 @@ def consult_3d_printing_guide(query: str) -> str:
     Returns:
         Relevant passages retrieved from the 3D printing reference guide.
     """
-    guide_path = os.path.join(os.path.dirname(__file__), "..", "scratch", "3d_printing_handbook.txt")
+    guide_path = os.path.join(os.path.dirname(__file__), "3d_printing_handbook.txt")
+    if not os.path.exists(guide_path):
+        guide_path = os.path.join(os.path.dirname(__file__), "..", "scratch", "3d_printing_handbook.txt")
     if not os.path.exists(guide_path):
         return "Reference guide file not found."
     with open(guide_path, "r", encoding="utf-8") as f:

@@ -3,13 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PrintCraft 3D — AI Slicer & Hardware CAD Studio</title>
-<!-- Google Fonts & Icons -->
+<title>PrintCraft 3D Studio - AI CAD & Slicer</title>
+
+<!-- Modern Google Fonts & Icons -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
-<!-- Three.js & OrbitControls for 3D WebGL Rendering -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+<!-- Three.js & OrbitControls from CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
@@ -18,19 +20,18 @@
     --bg-dark: #070a12;
     --panel-bg: rgba(15, 23, 42, 0.75);
     --panel-border: rgba(255, 255, 255, 0.08);
-    --accent-blue: #3b82f6;
+    --accent-blue: #2563eb;
     --accent-cyan: #06b6d4;
-    --accent-purple: #8b5cf6;
-    --accent-glow: rgba(59, 130, 246, 0.25);
+    --accent-pink: #ec4899;
+    --accent-glow: rgba(37, 99, 235, 0.35);
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
-    --card-bg: rgba(30, 41, 59, 0.7);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
     height: 100vh;
@@ -39,17 +40,17 @@
     flex-direction: column;
   }
 
-  /* --- Top Navigation Bar --- */
+  /* --- Top Navigation Header --- */
   header {
-    height: 58px;
-    background: rgba(11, 15, 25, 0.9);
-    backdrop-filter: blur(16px);
+    height: 56px;
+    background: rgba(10, 15, 30, 0.9);
+    backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--panel-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 1.5rem;
-    z-index: 100;
+    z-index: 50;
   }
 
   .brand {
@@ -57,10 +58,9 @@
     align-items: center;
     gap: 0.75rem;
     font-family: 'Outfit', sans-serif;
-    font-size: 1.2rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+    font-size: 1.25rem;
+    background: linear-gradient(135deg, #38bdf8, #818cf8, #f43f5e);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
@@ -68,8 +68,8 @@
   .brand-icon {
     width: 32px;
     height: 32px;
-    background: linear-gradient(135deg, #3b82f6, #06b6d4);
     border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -85,15 +85,16 @@
   }
 
   .pill {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.75rem;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--panel-border);
-    color: var(--text-muted);
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
   }
 
   .pill.active {
@@ -110,16 +111,16 @@
     box-shadow: 0 0 8px #34d399;
   }
 
-  /* --- Main Workspace Layout (Split Screen) --- */
+  /* --- Split Studio Layout --- */
   .workspace {
     flex: 1;
     display: grid;
     grid-template-columns: 420px 1fr;
-    height: calc(100vh - 58px);
-    position: relative;
+    height: calc(100vh - 56px);
+    overflow: hidden;
   }
 
-  /* --- Left Sidebar: Copilot Chat & Slicer Controls --- */
+  /* --- Left Sidebar: Copilot Chat & Slicer --- */
   .copilot-panel {
     background: var(--panel-bg);
     backdrop-filter: blur(16px);
@@ -127,7 +128,6 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    position: relative;
     z-index: 10;
   }
 
@@ -140,17 +140,40 @@
   }
 
   .panel-title {
-    font-size: 0.9rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
     font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    color: #e2e8f0;
   }
 
-  /* Prompt Chips */
+  .topic-bar {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .topic-input {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 0.4rem 0.75rem;
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+  }
+
+  .topic-input:focus {
+    border-color: #38bdf8;
+  }
+
+  /* Quick Prompts Chips */
   .quick-prompts {
     padding: 0.75rem 1.25rem;
     display: flex;
@@ -163,24 +186,24 @@
   .quick-prompts::-webkit-scrollbar { display: none; }
 
   .chip {
-    font-size: 0.75rem;
+    white-space: nowrap;
     padding: 0.35rem 0.75rem;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--panel-border);
+    font-size: 0.75rem;
     color: #cbd5e1;
     cursor: pointer;
-    white-space: nowrap;
     transition: all 0.2s ease;
   }
 
   .chip:hover {
-    background: rgba(59, 130, 246, 0.15);
-    border-color: var(--accent-blue);
-    color: #fff;
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
   }
 
-  /* Chat Message Log */
+  /* Chat Messages Container */
   #log {
     flex: 1;
     overflow-y: auto;
@@ -194,13 +217,7 @@
   .msg {
     display: flex;
     flex-direction: column;
-    max-width: 90%;
-    animation: fadeIn 0.3s ease;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+    max-width: 92%;
   }
 
   .msg.user {
@@ -214,66 +231,56 @@
   .bubble {
     padding: 0.85rem 1.1rem;
     border-radius: 14px;
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     line-height: 1.5;
-    white-space: pre-wrap;
     word-break: break-word;
+    white-space: pre-wrap;
   }
 
   .msg.user .bubble {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    background: linear-gradient(135deg, var(--accent-blue), #1d4ed8);
     color: #fff;
     border-bottom-right-radius: 4px;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
   }
 
   .msg.agent .bubble {
-    background: var(--card-bg);
+    background: rgba(30, 41, 59, 0.7);
     border: 1px solid var(--panel-border);
-    color: #f1f5f9;
+    color: #e2e8f0;
     border-bottom-left-radius: 4px;
   }
 
-  .bubble.rich {
-    background: transparent;
-    border: none;
-    padding: 0;
-    max-width: 100%;
-    white-space: normal;
-  }
-
-  /* Chat Input Form */
-  form {
+  /* Chat Input Area */
+  #form {
     padding: 1rem 1.25rem;
     border-top: 1px solid var(--panel-border);
-    background: rgba(11, 15, 25, 0.8);
     display: flex;
     gap: 0.75rem;
+    background: rgba(10, 15, 30, 0.5);
   }
 
   .input-wrapper {
     flex: 1;
     position: relative;
-    display: flex;
-    align-items: center;
   }
 
-  input {
+  #input {
     width: 100%;
     padding: 0.8rem 1rem;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--panel-border);
+    background: rgba(15, 23, 42, 0.8);
     color: #fff;
-    font-size: 0.9rem;
+    font-family: inherit;
+    font-size: 0.88rem;
     outline: none;
     transition: all 0.2s ease;
   }
 
-  input:focus {
-    border-color: var(--accent-blue);
-    background: rgba(255, 255, 255, 0.07);
-    box-shadow: 0 0 12px var(--accent-glow);
+  #input:focus {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
   }
 
   button {
@@ -459,22 +466,28 @@
     <div class="panel-header">
       <div class="panel-title">
         <span class="material-symbols-outlined">auto_awesome</span>
-        AI Slicer & Print Assistant
+        AI Slicer & CAD Studio
       </div>
+    </div>
+
+    <!-- Topic Input Bar (Loomin AI Style) -->
+    <div class="topic-bar">
+      <span class="material-symbols-outlined" style="font-size:1.1rem; color:#38bdf8;">model_training</span>
+      <input id="topic-input" class="topic-input" placeholder="3D Model Topic (e.g. heart mug, wind turbine)…" onkeydown="if(event.key==='Enter') applyTopic(this.value)">
     </div>
 
     <!-- Quick Prompts -->
     <div class="quick-prompts">
-      <div class="chip" onclick="sendPrompt('Check Bambu X1C specs')">🖨️ Bambu X1C Specs</div>
-      <div class="chip" onclick="sendPrompt('Calculate print time and cost for 150cm³ PLA')">📊 Calculate Cost (150cm³)</div>
-      <div class="chip" onclick="sendPrompt('List all slicer presets')">⚙️ Slicer Presets</div>
-      <div class="chip" onclick="sendPrompt('How to fix PETG stringing?')">🛠️ PETG Stringing Fix</div>
+      <div class="chip" onclick="sendPrompt('i want to desing a mug shaped in a heart shape.')">💖 Heart Mug</div>
+      <div class="chip" onclick="sendPrompt('design a wind turbine 3d model')">🌀 Wind Turbine</div>
+      <div class="chip" onclick="sendPrompt('Check Bambu X1C specs')">🖨️ Bambu X1C</div>
+      <div class="chip" onclick="sendPrompt('Calculate print time and cost for 150cm³ PLA')">📊 Cost (150cm³)</div>
     </div>
 
     <!-- Chat Log -->
     <div id="log">
       <div class="msg agent">
-        <div class="bubble">Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Ask me to query materials, 3D printer hardware specs, calculate print times, or solve printing artifacts.</div>
+        <div class="bubble">Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Ask me to query materials, 3D printer hardware specs, design a heart-shaped mug, or calculate slicing estimates.</div>
       </div>
     </div>
 
@@ -540,7 +553,6 @@
 
 <!-- Interactive Three.js Script -->
 <script>
-// --- Three.js WebGL Scene Setup ---
 let scene, camera, renderer, controls, mesh;
 let isWireframe = false;
 
@@ -563,7 +575,6 @@ function init3D() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
 
-  // Lights
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
 
@@ -571,29 +582,113 @@ function init3D() {
   dirLight1.position.set(100, 150, 100);
   scene.add(dirLight1);
 
-  const dirLight2 = new THREE.DirectionalLight(0x818cf8, 0.8);
+  const dirLight2 = new THREE.DirectionalLight(0xec4899, 0.8);
   dirLight2.position.set(-100, -50, -100);
   scene.add(dirLight2);
 
-  // 3D Printer Build Plate Grid
   const grid = new THREE.GridHelper(220, 22, 0x3b82f6, 0x1e293b);
   grid.position.y = -20;
   scene.add(grid);
 
-  // Create Parametric Mechanical Gear / 3D Part Mesh
+  createDefaultGearMesh();
+  animate();
+}
+
+function createDefaultGearMesh() {
+  if (mesh) scene.remove(mesh);
   const geometry = new THREE.TorusKnotGeometry(25, 8, 120, 16);
   const material = new THREE.MeshStandardMaterial({
     color: 0x2563eb,
     roughness: 0.2,
     metalness: 0.5,
-    wireframe: false
+    wireframe: isWireframe
   });
-
   mesh = new THREE.Mesh(geometry, material);
   mesh.position.y = 15;
   scene.add(mesh);
 
-  animate();
+  document.getElementById("hud-volume").textContent = "142.5 cm³";
+  document.getElementById("hud-weight").textContent = "156.8 g";
+  document.getElementById("hud-cost").textContent = "$3.45";
+  document.getElementById("hud-time").textContent = "3h 42m";
+}
+
+function createHeartMugMesh() {
+  if (mesh) scene.remove(mesh);
+
+  const heartShape = new THREE.Shape();
+  const x = 0, y = 0;
+  heartShape.moveTo(x + 25, y + 25);
+  heartShape.bezierCurveTo(x + 25, y + 25, x + 20, y, x, y);
+  heartShape.bezierCurveTo(x - 30, y, x - 30, y + 35, x - 30, y + 35);
+  heartShape.bezierCurveTo(x - 30, y + 55, x - 10, y + 77, x + 25, y + 95);
+  heartShape.bezierCurveTo(x + 60, y + 77, x + 80, y + 55, x + 80, y + 35);
+  heartShape.bezierCurveTo(x + 80, y + 35, x + 80, y, x + 50, y);
+  heartShape.bezierCurveTo(x + 35, y, x + 25, y + 25, x + 25, y + 25);
+
+  const extrudeSettings = { depth: 45, bevelEnabled: true, bevelSegments: 3, steps: 2, bevelSize: 2, bevelThickness: 3 };
+  const geometry = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+  geometry.center();
+
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xec4899,
+    roughness: 0.15,
+    metalness: 0.3,
+    wireframe: isWireframe
+  });
+
+  mesh = new THREE.Mesh(geometry, material);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 10;
+  scene.add(mesh);
+
+  document.getElementById("hud-volume").textContent = "220.0 cm³";
+  document.getElementById("hud-weight").textContent = "242.0 g";
+  document.getElementById("hud-cost").textContent = "$5.32";
+  document.getElementById("hud-time").textContent = "5h 15m";
+}
+
+function createWindTurbineMesh() {
+  if (mesh) scene.remove(mesh);
+
+  const group = new THREE.Group();
+  const towerGeom = new THREE.CylinderGeometry(2, 4, 80, 16);
+  const towerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3, wireframe: isWireframe });
+  const tower = new THREE.Mesh(towerGeom, towerMat);
+  tower.position.y = 20;
+  group.add(tower);
+
+  const nacelleGeom = new THREE.CylinderGeometry(4, 4, 16, 16);
+  const nacelleMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.2, wireframe: isWireframe });
+  const nacelle = new THREE.Mesh(nacelleGeom, nacelleMat);
+  nacelle.rotation.z = Math.PI / 2;
+  nacelle.position.set(0, 60, 0);
+  group.add(nacelle);
+
+  mesh = group;
+  scene.add(mesh);
+
+  document.getElementById("hud-volume").textContent = "185.0 cm³";
+  document.getElementById("hud-weight").textContent = "203.5 g";
+  document.getElementById("hud-cost").textContent = "$4.48";
+  document.getElementById("hud-time").textContent = "4h 30m";
+}
+
+function updateMeshByPrompt(text) {
+  const lower = text.toLowerCase();
+  if (lower.includes("heart") || lower.includes("mug")) {
+    createHeartMugMesh();
+  } else if (lower.includes("turbine") || lower.includes("wind")) {
+    createWindTurbineMesh();
+  } else if (lower.includes("gear") || lower.includes("mesh")) {
+    createDefaultGearMesh();
+  }
+}
+
+function applyTopic(val) {
+  if (!val) return;
+  document.getElementById("topic-input").value = val;
+  sendPrompt(`Design a 3D CAD model and slicing plan for topic: ${val}`);
 }
 
 function animate() {
@@ -604,9 +699,10 @@ function animate() {
 }
 
 function toggleWireframe() {
+  isWireframe = !isWireframe;
   if (mesh) {
-    isWireframe = !isWireframe;
-    mesh.material.wireframe = isWireframe;
+    if (mesh.material) mesh.material.wireframe = isWireframe;
+    else mesh.traverse(child => { if (child.material) child.material.wireframe = isWireframe; });
   }
 }
 
@@ -649,104 +745,11 @@ function sendPrompt(text) {
   form.dispatchEvent(new Event('submit'));
 }
 
-/* A2UI Subset Renderer */
-function boundStr(v) {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  if (typeof v.literalString === "string") return v.literalString;
-  return "";
-}
-
-function childIds(props) {
-  const ids = [];
-  if (props && typeof props.child === "string") ids.push(props.child);
-  const ch = props && props.children;
-  if (ch && Array.isArray(ch.explicitList)) for (const c of ch.explicitList) if (typeof c === "string") ids.push(c);
-  return ids;
-}
-
-function iconName(n) { return String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/\s+/g, "_").toLowerCase(); }
-
-function buildNode(id, comps, seen) {
-  if (!id || seen.has(id)) return null;
-  seen.add(id);
-  const spec = comps[id];
-  if (!spec || typeof spec !== "object") return null;
-  const type = Object.keys(spec)[0];
-  const props = spec[type] || {};
-  const kids = () => childIds(props).map(cid => buildNode(cid, comps, seen)).filter(Boolean);
-
-  switch (type) {
-    case "Card": {
-      const d = el("div", "a2card"); kids().forEach(n => d.appendChild(n)); return d;
-    }
-    case "Column":
-    case "List": {
-      const horizontal = type === "List" && props.direction === "horizontal";
-      const d = el("div", horizontal ? "a2row" : "a2col"); kids().forEach(n => d.appendChild(n)); return d;
-    }
-    case "Row": {
-      const d = el("div", "a2row" + (props.distribution === "spaceBetween" ? " between" : ""));
-      kids().forEach(n => d.appendChild(n)); return d;
-    }
-    case "Text": {
-      const t = el("div", "a2text");
-      const hint = String(props.usageHint || "body").toLowerCase();
-      if (["h1", "h2", "h3", "h4", "h5", "h6"].includes(hint)) t.classList.add("a2-" + hint);
-      else if (hint === "caption") t.classList.add("a2-caption");
-      t.textContent = boundStr(props.text);
-      return t;
-    }
-    case "Divider":
-      return el("hr", "a2divider");
-    case "Icon": {
-      const s = el("span", "material-symbols-outlined"); s.textContent = iconName(boundStr(props.name) || props.name); return s;
-    }
-    default:
-      return null;
-  }
-}
-
-function renderSurface(messages, container) {
-  const comps = {};
-  const roots = [];
-  for (const m of messages) {
-    if (m.beginRendering && typeof m.beginRendering.root === "string") roots.push(m.beginRendering.root);
-    const su = m.surfaceUpdate;
-    if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.id && c.component) comps[c.id] = c.component;
-  }
-  let rootIds = roots.filter(r => comps[r]);
-  if (rootIds.length === 0) {
-    const referenced = new Set();
-    for (const id in comps) { const spec = comps[id]; childIds(spec[Object.keys(spec)[0]] || {}).forEach(c => referenced.add(c)); }
-    rootIds = Object.keys(comps).filter(id => !referenced.has(id));
-  }
-  let drew = false;
-  for (const rid of rootIds) { const node = buildNode(rid, comps, new Set()); if (node) { container.appendChild(node); drew = true; } }
-  return drew;
-}
-
-function flattenText(messages) {
-  const out = [];
-  for (const m of messages) {
-    const su = m.surfaceUpdate;
-    if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.component && c.component.Text) out.push(boundStr(c.component.Text.text));
-  }
-  return out.join("\n").trim();
-}
-
 function renderReply(b, parts) {
   b.textContent = "";
   const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
-  const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
-
   const textStr = texts.join("\n").trim();
   if (textStr) b.appendChild(el("div", null, textStr));
-
-  if (a2ui.length) {
-    b.classList.add("rich");
-    if (!renderSurface(a2ui, b)) b.appendChild(el("div", null, flattenText(a2ui) || "(no card content)"));
-  }
   if (!b.childNodes.length) b.textContent = "(no response)";
   log.scrollTop = log.scrollHeight;
 }
@@ -757,6 +760,7 @@ form.addEventListener("submit", async (ev) => {
   if (!text) return;
   bubble("user").textContent = text;
   input.value = "";
+  updateMeshByPrompt(text);
   const b = bubble("agent"); b.textContent = "…";
   try {
     const res = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) });
