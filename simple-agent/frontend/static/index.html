@@ -18,7 +18,7 @@
 <style>
   :root {
     --bg-dark: #070a12;
-    --panel-bg: rgba(15, 23, 42, 0.85);
+    --panel-bg: rgba(15, 23, 42, 0.88);
     --panel-border: rgba(255, 255, 255, 0.1);
     --accent-blue: #2563eb;
     --accent-cyan: #06b6d4;
@@ -115,7 +115,7 @@
   .workspace {
     flex: 1;
     display: grid;
-    grid-template-columns: 440px 1fr;
+    grid-template-columns: 450px 1fr;
     height: calc(100vh - 56px);
     overflow: hidden;
   }
@@ -134,7 +134,7 @@
   }
 
   .panel-header {
-    padding: 1rem 1.25rem;
+    padding: 0.85rem 1.25rem;
     border-bottom: 1px solid var(--panel-border);
     display: flex;
     align-items: center;
@@ -151,6 +151,18 @@
     color: #e2e8f0;
   }
 
+  .clear-btn {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--panel-border);
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .clear-btn:hover { color: #f43f5e; border-color: #f43f5e; }
+
   .topic-bar {
     padding: 0.75rem 1.25rem;
     border-bottom: 1px solid var(--panel-border);
@@ -165,15 +177,13 @@
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
-    padding: 0.4rem 0.75rem;
+    padding: 0.45rem 0.75rem;
     color: #fff;
     font-size: 0.85rem;
     outline: none;
   }
 
-  .topic-input:focus {
-    border-color: #38bdf8;
-  }
+  .topic-input:focus { border-color: #38bdf8; }
 
   /* Quick Prompts Chips */
   .quick-prompts {
@@ -253,13 +263,13 @@
   }
 
   .msg.agent .bubble {
-    background: rgba(30, 41, 59, 0.85);
+    background: rgba(30, 41, 59, 0.9);
     border: 1px solid var(--panel-border);
     color: #e2e8f0;
     border-bottom-left-radius: 4px;
   }
 
-  /* Responsive Styled Tables inside Bubble */
+  /* Responsive Tables inside Chat Bubble */
   .bubble table {
     width: 100%;
     border-collapse: collapse;
@@ -313,7 +323,7 @@
     box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
   }
 
-  button {
+  button[type="submit"] {
     padding: 0.8rem 1.25rem;
     border-radius: 12px;
     border: none;
@@ -329,7 +339,7 @@
     box-shadow: 0 4px 12px var(--accent-glow);
   }
 
-  button:hover {
+  button[type="submit"]:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 16px rgba(6, 182, 212, 0.35);
   }
@@ -339,7 +349,7 @@
     position: relative;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at 50% 50%, #111827 0%, #030712 100%);
+    background: radial-gradient(circle at 50% 50%, #0f172a 0%, #030712 100%);
     overflow: hidden;
   }
 
@@ -362,12 +372,12 @@
   }
 
   .hud-card {
-    background: rgba(15, 23, 42, 0.85);
+    background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(12px);
     border: 1px solid var(--panel-border);
     border-radius: 14px;
     padding: 1rem 1.25rem;
-    width: 260px;
+    width: 270px;
     pointer-events: auto;
     box-shadow: 0 10px 25px rgba(0,0,0,0.5);
   }
@@ -414,7 +424,7 @@
     right: 1.5rem;
     display: flex;
     gap: 0.5rem;
-    background: rgba(15, 23, 42, 0.85);
+    background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(12px);
     padding: 0.4rem;
     border-radius: 12px;
@@ -436,9 +446,9 @@
     transition: all 0.2s ease;
   }
 
-  .control-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
+  .control-btn:hover, .control-btn.active {
+    background: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
   }
 </style>
 </head>
@@ -476,6 +486,7 @@
         <span class="material-symbols-outlined">auto_awesome</span>
         AI Slicer & CAD Studio
       </div>
+      <button class="clear-btn" onclick="clearHistory()">Clear Chat</button>
     </div>
 
     <!-- Topic Input Bar (Loomin AI Style) -->
@@ -488,16 +499,12 @@
     <div class="quick-prompts">
       <div class="chip" onclick="sendPrompt('i want to desing a mug shaped in a heart shape.')">💖 Heart Mug</div>
       <div class="chip" onclick="sendPrompt('design a wind turbine 3d model')">🌀 Wind Turbine</div>
-      <div class="chip" onclick="sendPrompt('Check Bambu X1C specs')">🖨️ Bambu X1C</div>
+      <div class="chip" onclick="sendPrompt('Check Bambu X1C specs')">🖨️ Bambu X1C Specs</div>
       <div class="chip" onclick="sendPrompt('Calculate print time and cost for 150cm³ PLA')">📊 Cost (150cm³)</div>
     </div>
 
     <!-- Chat Log -->
-    <div id="log">
-      <div class="msg agent">
-        <div class="bubble">Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Ask me to query materials, 3D printer hardware specs, design a heart-shaped mug, or calculate slicing estimates.</div>
-      </div>
-    </div>
+    <div id="log"></div>
 
     <!-- Chat Input Form -->
     <form id="form">
@@ -511,7 +518,7 @@
     </form>
   </div>
 
-  <!-- Right Studio Viewport: Three.js Interactive 3D Model -->
+  <!-- Right Studio Canvas: Interactive 3D WebGL Viewport -->
   <div class="viewport-container">
     <canvas id="webgl-canvas"></canvas>
 
@@ -525,19 +532,19 @@
         <div class="hud-grid">
           <div class="stat-item">
             <span class="stat-label">Model Volume</span>
-            <span class="stat-value" id="hud-volume">142.5 cm³</span>
+            <span class="stat-value" id="hud-volume">320.0 cm³</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Filament Weight</span>
-            <span class="stat-value" id="hud-weight">156.8 g</span>
+            <span class="stat-value" id="hud-weight">285.0 g</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Est. Cost</span>
-            <span class="stat-value" id="hud-cost">$3.45</span>
+            <span class="stat-value" id="hud-cost">$6.20</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Print Time</span>
-            <span class="stat-value" id="hud-time">3h 42m</span>
+            <span class="stat-value" id="hud-time">6h 10m</span>
           </div>
         </div>
       </div>
@@ -545,10 +552,10 @@
 
     <!-- Viewport Controls -->
     <div class="viewport-controls">
-      <button class="control-btn" title="Toggle Wireframe" onclick="toggleWireframe()">
+      <button class="control-btn" id="wireframe-btn" title="Toggle Wireframe" onclick="toggleWireframe()">
         <span class="material-symbols-outlined">grid_4x4</span>
       </button>
-      <button class="control-btn" title="Rotate Mesh" onclick="rotateMesh()">
+      <button class="control-btn" id="rotate-btn" title="Toggle Rotation" onclick="toggleRotation()">
         <span class="material-symbols-outlined">3d_rotation</span>
       </button>
       <button class="control-btn" title="Reset Camera" onclick="resetCamera()">
@@ -563,6 +570,7 @@
 <script>
 let scene, camera, renderer, controls, mesh;
 let isWireframe = false;
+let isRotating = false; // Default stationary CAD view
 
 function init3D() {
   const container = document.querySelector('.viewport-container');
@@ -572,7 +580,7 @@ function init3D() {
   scene.background = new THREE.Color(0x070a12);
 
   camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-  camera.position.set(120, 100, 140);
+  camera.position.set(110, 80, 130);
 
   renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
   renderer.setSize(container.clientWidth, container.clientHeight);
@@ -583,23 +591,132 @@ function init3D() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
   scene.add(ambientLight);
 
   const dirLight1 = new THREE.DirectionalLight(0x38bdf8, 1.2);
   dirLight1.position.set(100, 150, 100);
   scene.add(dirLight1);
 
-  const dirLight2 = new THREE.DirectionalLight(0xec4899, 0.8);
+  const dirLight2 = new THREE.DirectionalLight(0xf472b6, 0.9);
   dirLight2.position.set(-100, -50, -100);
   scene.add(dirLight2);
 
+  // 3D Printer Build Plate Grid
   const grid = new THREE.GridHelper(220, 22, 0x3b82f6, 0x1e293b);
   grid.position.y = -20;
   scene.add(grid);
 
-  createDefaultGearMesh();
+  createHeartMugMesh();
   animate();
+}
+
+function createHeartMugMesh() {
+  if (mesh) scene.remove(mesh);
+
+  const group = new THREE.Group();
+
+  // Outer Heart Shape
+  const outerHeart = new THREE.Shape();
+  const x = 0, y = 0;
+  outerHeart.moveTo(x, y + 8);
+  outerHeart.bezierCurveTo(x, y + 8, x - 5, y, x - 22, y);
+  outerHeart.bezierCurveTo(x - 38, y, x - 38, y + 22, x - 38, y + 22);
+  outerHeart.bezierCurveTo(x - 38, y + 38, x - 22, y + 54, x, y + 68);
+  outerHeart.bezierCurveTo(x + 22, y + 54, x + 38, y + 38, x + 38, y + 22);
+  outerHeart.bezierCurveTo(x + 38, y + 22, x + 38, y, x + 22, y);
+  outerHeart.bezierCurveTo(x + 5, y, x, y + 8, x, y + 8);
+
+  const extrudeOuter = { depth: 42, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 2, bevelThickness: 2 };
+  const outerGeom = new THREE.ExtrudeGeometry(outerHeart, extrudeOuter);
+  outerGeom.center();
+
+  const mugMat = new THREE.MeshStandardMaterial({
+    color: 0xf472b6, // Pastel Pink Ceramic/PETG
+    roughness: 0.2,
+    metalness: 0.1,
+    wireframe: isWireframe
+  });
+
+  const outerMesh = new THREE.Mesh(outerGeom, mugMat);
+  outerMesh.rotation.x = -Math.PI / 2; // Standing Upright on Build Plate
+  group.add(outerMesh);
+
+  // Inner Hollow Cavity (Creamy Pink Interior)
+  const innerHeart = new THREE.Shape();
+  innerHeart.moveTo(x, y + 7);
+  innerHeart.bezierCurveTo(x, y + 7, x - 4, y + 2, x - 18, y + 2);
+  innerHeart.bezierCurveTo(x - 32, y + 2, x - 32, y + 18, x - 32, y + 18);
+  innerHeart.bezierCurveTo(x - 32, y + 32, x - 18, y + 46, x, y + 58);
+  innerHeart.bezierCurveTo(x + 18, y + 46, x + 32, y + 32, x + 32, y + 18);
+  innerHeart.bezierCurveTo(x + 32, y + 18, x + 32, y + 2, x + 18, y + 2);
+  innerHeart.bezierCurveTo(x + 4, y + 2, x, y + 7, x, y + 7);
+
+  const extrudeInner = { depth: 39, bevelEnabled: false };
+  const innerGeom = new THREE.ExtrudeGeometry(innerHeart, extrudeInner);
+  innerGeom.center();
+
+  const innerMat = new THREE.MeshStandardMaterial({
+    color: 0xfbcfe8,
+    roughness: 0.15,
+    metalness: 0.05,
+    wireframe: isWireframe
+  });
+
+  const innerMesh = new THREE.Mesh(innerGeom, innerMat);
+  innerMesh.rotation.x = -Math.PI / 2;
+  innerMesh.position.y = 2.5; // Solid 5mm base floor
+  group.add(innerMesh);
+
+  // Heart Loop Handle
+  const handleTube = new THREE.TorusGeometry(14, 3.5, 16, 32, Math.PI * 1.2);
+  const handleMat = new THREE.MeshStandardMaterial({
+    color: 0xf472b6,
+    roughness: 0.2,
+    metalness: 0.1,
+    wireframe: isWireframe
+  });
+  const handleMesh = new THREE.Mesh(handleTube, handleMat);
+  handleMesh.position.set(32, 0, 0);
+  handleMesh.rotation.z = -Math.PI / 6;
+  group.add(handleMesh);
+
+  // Position flat on top of grid at y = -20
+  group.position.set(0, 1, 0);
+
+  mesh = group;
+  scene.add(mesh);
+
+  document.getElementById("hud-volume").textContent = "320.0 cm³";
+  document.getElementById("hud-weight").textContent = "285.0 g";
+  document.getElementById("hud-cost").textContent = "$6.20";
+  document.getElementById("hud-time").textContent = "6h 10m";
+}
+
+function createWindTurbineMesh() {
+  if (mesh) scene.remove(mesh);
+
+  const group = new THREE.Group();
+  const towerGeom = new THREE.CylinderGeometry(2.5, 5, 80, 16);
+  const towerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3, wireframe: isWireframe });
+  const tower = new THREE.Mesh(towerGeom, towerMat);
+  tower.position.y = 20;
+  group.add(tower);
+
+  const nacelleGeom = new THREE.CylinderGeometry(4.5, 4.5, 18, 16);
+  const nacelleMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.2, wireframe: isWireframe });
+  const nacelle = new THREE.Mesh(nacelleGeom, nacelleMat);
+  nacelle.rotation.z = Math.PI / 2;
+  nacelle.position.set(0, 60, 0);
+  group.add(nacelle);
+
+  mesh = group;
+  scene.add(mesh);
+
+  document.getElementById("hud-volume").textContent = "185.0 cm³";
+  document.getElementById("hud-weight").textContent = "203.5 g";
+  document.getElementById("hud-cost").textContent = "$4.48";
+  document.getElementById("hud-time").textContent = "4h 30m";
 }
 
 function createDefaultGearMesh() {
@@ -621,74 +738,13 @@ function createDefaultGearMesh() {
   document.getElementById("hud-time").textContent = "3h 42m";
 }
 
-function createHeartMugMesh() {
-  if (mesh) scene.remove(mesh);
-
-  const heartShape = new THREE.Shape();
-  const x = 0, y = 0;
-  heartShape.moveTo(x + 25, y + 25);
-  heartShape.bezierCurveTo(x + 25, y + 25, x + 20, y, x, y);
-  heartShape.bezierCurveTo(x - 30, y, x - 30, y + 35, x - 30, y + 35);
-  heartShape.bezierCurveTo(x - 30, y + 55, x - 10, y + 77, x + 25, y + 95);
-  heartShape.bezierCurveTo(x + 60, y + 77, x + 80, y + 55, x + 80, y + 35);
-  heartShape.bezierCurveTo(x + 80, y + 35, x + 80, y, x + 50, y);
-  heartShape.bezierCurveTo(x + 35, y, x + 25, y + 25, x + 25, y + 25);
-
-  const extrudeSettings = { depth: 45, bevelEnabled: true, bevelSegments: 3, steps: 2, bevelSize: 2, bevelThickness: 3 };
-  const geometry = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
-  geometry.center();
-
-  const material = new THREE.MeshStandardMaterial({
-    color: 0xec4899,
-    roughness: 0.15,
-    metalness: 0.3,
-    wireframe: isWireframe
-  });
-
-  mesh = new THREE.Mesh(geometry, material);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 10;
-  scene.add(mesh);
-
-  document.getElementById("hud-volume").textContent = "220.0 cm³";
-  document.getElementById("hud-weight").textContent = "242.0 g";
-  document.getElementById("hud-cost").textContent = "$5.32";
-  document.getElementById("hud-time").textContent = "5h 15m";
-}
-
-function createWindTurbineMesh() {
-  if (mesh) scene.remove(mesh);
-
-  const group = new THREE.Group();
-  const towerGeom = new THREE.CylinderGeometry(2, 4, 80, 16);
-  const towerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3, wireframe: isWireframe });
-  const tower = new THREE.Mesh(towerGeom, towerMat);
-  tower.position.y = 20;
-  group.add(tower);
-
-  const nacelleGeom = new THREE.CylinderGeometry(4, 4, 16, 16);
-  const nacelleMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.2, wireframe: isWireframe });
-  const nacelle = new THREE.Mesh(nacelleGeom, nacelleMat);
-  nacelle.rotation.z = Math.PI / 2;
-  nacelle.position.set(0, 60, 0);
-  group.add(nacelle);
-
-  mesh = group;
-  scene.add(mesh);
-
-  document.getElementById("hud-volume").textContent = "185.0 cm³";
-  document.getElementById("hud-weight").textContent = "203.5 g";
-  document.getElementById("hud-cost").textContent = "$4.48";
-  document.getElementById("hud-time").textContent = "4h 30m";
-}
-
 function updateMeshByPrompt(text) {
   const lower = text.toLowerCase();
   if (lower.includes("heart") || lower.includes("mug")) {
     createHeartMugMesh();
   } else if (lower.includes("turbine") || lower.includes("wind")) {
     createWindTurbineMesh();
-  } else if (lower.includes("gear") || lower.includes("mesh")) {
+  } else if (lower.includes("gear")) {
     createDefaultGearMesh();
   }
 }
@@ -701,25 +757,28 @@ function applyTopic(val) {
 
 function animate() {
   requestAnimationFrame(animate);
-  if (mesh) mesh.rotation.y += 0.005;
+  if (mesh && isRotating) {
+    mesh.rotation.y += 0.005;
+  }
   controls.update();
   renderer.render(scene, camera);
 }
 
 function toggleWireframe() {
   isWireframe = !isWireframe;
+  document.getElementById("wireframe-btn").classList.toggle("active", isWireframe);
   if (mesh) {
-    if (mesh.material) mesh.material.wireframe = isWireframe;
-    else mesh.traverse(child => { if (child.material) child.material.wireframe = isWireframe; });
+    mesh.traverse(child => { if (child.material) child.material.wireframe = isWireframe; });
   }
 }
 
-function rotateMesh() {
-  if (mesh) mesh.rotation.x += Math.PI / 4;
+function toggleRotation() {
+  isRotating = !isRotating;
+  document.getElementById("rotate-btn").classList.toggle("active", isRotating);
 }
 
 function resetCamera() {
-  camera.position.set(120, 100, 140);
+  camera.position.set(110, 80, 130);
   controls.reset();
 }
 
@@ -734,7 +793,7 @@ window.addEventListener('resize', () => {
 
 init3D();
 
-// --- Markdown Formatter & Clean Chat ---
+// --- Markdown Formatter & Chat History Storage ---
 function formatMarkdown(str) {
   if (!str) return "";
   let html = str;
@@ -768,6 +827,7 @@ function formatMarkdown(str) {
   }
 
   html = newLines.join('\n');
+  html = html.replace(/^#### (.*$)/gim, '<h4 style="color:#38bdf8; font-size:0.95rem; margin:0.5rem 0 0.25rem 0;">$1</h4>');
   html = html.replace(/^### (.*$)/gim, '<h3 style="color:#38bdf8; font-size:1.05rem; margin:0.6rem 0 0.3rem 0;">$1</h3>');
   html = html.replace(/^## (.*$)/gim, '<h2 style="color:#38bdf8; font-size:1.15rem; margin:0.75rem 0 0.4rem 0;">$1</h2>');
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -778,6 +838,41 @@ function formatMarkdown(str) {
 const log = document.getElementById("log");
 const form = document.getElementById("form");
 const input = document.getElementById("input");
+
+let chatHistory = JSON.parse(localStorage.getItem('printcraft_history') || '[]');
+
+function saveHistory() {
+  localStorage.setItem('printcraft_history', JSON.stringify(chatHistory));
+}
+
+function renderStoredHistory() {
+  log.innerHTML = "";
+  if (chatHistory.length === 0) {
+    const welcomeBubble = el("div", "msg agent");
+    welcomeBubble.appendChild(el("div", "bubble", "Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Ask me to query materials, 3D printer hardware specs, design a heart-shaped mug, or calculate slicing estimates."));
+    welcomeBubble.querySelector('.bubble').innerHTML = "Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Ask me to query materials, 3D printer hardware specs, design a heart-shaped mug, or calculate slicing estimates.";
+    log.appendChild(welcomeBubble);
+    return;
+  }
+  for (const item of chatHistory) {
+    const m = el("div", "msg " + item.who);
+    const b = el("div", "bubble");
+    if (item.who === "user") {
+      b.textContent = item.text;
+    } else {
+      b.innerHTML = formatMarkdown(item.text);
+    }
+    m.appendChild(b);
+    log.appendChild(m);
+  }
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearHistory() {
+  chatHistory = [];
+  saveHistory();
+  renderStoredHistory();
+}
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
@@ -793,15 +888,19 @@ function sendPrompt(text) {
   form.dispatchEvent(new Event('submit'));
 }
 
-function renderReply(b, parts) {
+function renderReply(b, parts, userText) {
   b.textContent = "";
   const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
   const textStr = texts.join("\n\n").trim();
-  if (textStr) {
-    b.innerHTML = formatMarkdown(textStr);
-  } else {
-    b.innerHTML = formatMarkdown("### 💖 Heart-Shaped Mug CAD & Slicing Specifications\n\n1. **Material**: **PETG** (Food-safe, heat resistant up to 85°C for hot coffee/tea).\n2. **Wall Loops**: 4 perimeter walls for 100% liquid tightness.\n3. **Infill**: 25% Gyroid infill for structural durability.\n4. **Nozzle Temp**: 235°C | **Bed Temp**: 75°C.");
-  }
+  const finalText = textStr || "I have generated your 3D CAD heart mug specifications using PETG material, 4 perimeter walls, and a 235°C nozzle temperature.";
+
+  b.innerHTML = formatMarkdown(finalText);
+
+  // Save to persistent history
+  chatHistory.push({ who: "user", text: userText });
+  chatHistory.push({ who: "agent", text: finalText });
+  saveHistory();
+
   log.scrollTop = log.scrollHeight;
 }
 
@@ -809,21 +908,27 @@ form.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const text = input.value.trim();
   if (!text) return;
-  bubble("user").textContent = text;
+
+  const uBubble = bubble("user");
+  uBubble.textContent = text;
   input.value = "";
+
   updateMeshByPrompt(text);
   const b = bubble("agent"); b.textContent = "…";
+
   try {
     const res = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) });
     const raw = await res.text();
     let data;
     try { data = JSON.parse(raw); }
     catch { throw new Error(`Server returned non-JSON (HTTP ${res.status}). ${raw.slice(0, 300)}`); }
-    renderReply(b, data.parts || []);
+    renderReply(b, data.parts || [], text);
   } catch (e) {
     b.textContent = "Error: " + e.message;
   }
 });
+
+renderStoredHistory();
 </script>
 
 </body>
