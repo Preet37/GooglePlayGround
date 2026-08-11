@@ -395,6 +395,78 @@
     color: #94a3b8;
   }
 
+  /* 5-Second Futuristic AI Generation Progress Card Overlay */
+  .ai-loader-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 380px;
+    background: rgba(10, 15, 30, 0.94);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    border-radius: 20px;
+    padding: 1.5rem 1.75rem;
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+    z-index: 30;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.2);
+    animation: loaderPulse 2s infinite ease-in-out;
+  }
+
+  @keyframes loaderPulse {
+    0%, 100% { border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.2); }
+    50% { border-color: rgba(52, 211, 153, 0.6); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(52, 211, 153, 0.3); }
+  }
+
+  .loader-top-badge {
+    align-self: flex-start;
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: #34d399;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .loader-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: #38bdf8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .loader-stage-text {
+    font-size: 0.88rem;
+    color: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .loader-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .loader-progress-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #38bdf8, #34d399);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+
   /* Left Vertical Slicer Tool Bar */
   .slicer-toolbar {
     position: absolute;
@@ -793,6 +865,22 @@
       <span class="badge-sub">Click a prompt chip or type any CAD prompt to generate 3D model</span>
     </div>
 
+    <!-- 5-Second Futuristic AI Generation Overlay Card -->
+    <div class="ai-loader-card" id="ai-loader">
+      <div class="loader-top-badge">
+        <span class="material-symbols-outlined" style="font-size:0.85rem;">check_circle</span>
+        OPTIMAL AI PARAMETERS
+      </div>
+      <div class="loader-title" id="loader-title">BUILDING · TARGET OBJECT</div>
+      <div class="loader-stage-text" id="loader-stage">
+        <span class="material-symbols-outlined" style="color:#34d399; font-size:1.1rem;">science</span>
+        <span id="stage-msg">Researching real specifications...</span>
+      </div>
+      <div class="loader-progress-bar">
+        <div class="loader-progress-fill" id="loader-fill"></div>
+      </div>
+    </div>
+
     <!-- Left Vertical Slicer Toolbar -->
     <div class="slicer-toolbar">
       <button class="tool-btn active" id="tool-move" data-tooltip="Move Gizmo [M]" onclick="selectTool('move')"><span class="material-symbols-outlined">open_with</span></button>
@@ -897,7 +985,7 @@
 
 <!-- Interactive Three.js Engine Script -->
 <script>
-let scene, camera, renderer, controls, transformControls, meshGroup, supportGroup, nozzleMesh;
+let scene, camera, renderer, controls, transformControls, meshGroup, supportGroup, nozzleMesh, holoSphere;
 let clippingPlane;
 let currentModel = null;
 let currentTopicTitle = '';
@@ -905,6 +993,7 @@ let isWireframe = false;
 let isRotating = false;
 let isSliceView = false;
 let hasSupports = false;
+let isGenerating = false;
 let modelHeight = 50;
 
 function init3D() {
@@ -950,7 +1039,7 @@ function init3D() {
 
   createPEIBuildPlate();
   create3DNozzle();
-  // Start with empty plate on refresh!
+  createHoloWireframeSphere();
   animate();
 }
 
@@ -988,6 +1077,15 @@ function create3DNozzle() {
   scene.add(nozzleMesh);
 }
 
+function createHoloWireframeSphere() {
+  const geom = new THREE.IcosahedronGeometry(40, 2);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x34d399, wireframe: true, transparent: true, opacity: 0.35 });
+  holoSphere = new THREE.Mesh(geom, mat);
+  holoSphere.position.set(0, 40, 0);
+  holoSphere.visible = false;
+  scene.add(holoSphere);
+}
+
 function snapToBed(group) {
   const bbox = new THREE.Box3().setFromObject(group);
   group.position.y = -bbox.min.y;
@@ -996,6 +1094,38 @@ function snapToBed(group) {
 function hideEmptyBadge() {
   const badge = document.getElementById("empty-badge");
   if (badge) badge.style.display = "none";
+}
+
+function startAILoadingAnimation(promptTitle, callback) {
+  isGenerating = true;
+  hideEmptyBadge();
+  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
+
+  holoSphere.visible = true;
+  const loaderCard = document.getElementById("ai-loader");
+  const loaderTitle = document.getElementById("loader-title");
+  const stageMsg = document.getElementById("stage-msg");
+  const fill = document.getElementById("loader-fill");
+
+  loaderTitle.textContent = `BUILDING · ${promptTitle.toUpperCase()}`;
+  loaderCard.style.display = "flex";
+  fill.style.width = "5%";
+
+  // 5-Second Multi-Stage AI Generation Pipeline
+  setTimeout(() => { stageMsg.textContent = "🔬 Researching real mechanical specifications & thermal limits..."; fill.style.width = "30%"; }, 400);
+  setTimeout(() => { stageMsg.textContent = "📐 Synthesizing parametric 3D CAD mesh assembly & wall loops..."; fill.style.width = "65%"; }, 1800);
+  setTimeout(() => { stageMsg.textContent = "⚡ Calculating G-Code toolpath layers & infill density..."; fill.style.width = "92%"; }, 3500);
+
+  setTimeout(() => {
+    fill.style.width = "100%";
+    stageMsg.textContent = "✨ 3D CAD Model Generated!";
+    setTimeout(() => {
+      loaderCard.style.display = "none";
+      holoSphere.visible = false;
+      isGenerating = false;
+      callback();
+    }, 600);
+  }, 4800);
 }
 
 function selectTool(tool) {
@@ -1042,8 +1172,6 @@ function toggleSupports() {
 
 // 1. 💖 Heart Mug
 function createHeartMugMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'mug'; currentTopicTitle = 'Heart Mug'; meshGroup = new THREE.Group();
 
   const outerHeart = new THREE.Shape(); const x = 0, y = 0;
@@ -1084,8 +1212,6 @@ function createHeartMugMesh() {
 
 // 2. 🔨 Hammer
 function createHammerMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'hammer'; currentTopicTitle = 'Heavy Duty Hammer'; meshGroup = new THREE.Group();
 
   const handleGeom = new THREE.CylinderGeometry(3.5, 4.5, 75, 24);
@@ -1106,8 +1232,6 @@ function createHammerMesh() {
 
 // 3. 🚀 Rocketship
 function createRocketshipMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'rocket'; currentTopicTitle = 'Mini Rocketship'; meshGroup = new THREE.Group();
 
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.25, metalness: 0.3, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
@@ -1129,8 +1253,6 @@ function createRocketshipMesh() {
 
 // 4. 🌀 Wind Turbine
 function createWindTurbineMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'turbine'; currentTopicTitle = 'Wind Turbine'; meshGroup = new THREE.Group();
 
   const towerMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xe2e8f0, roughness: 0.3 });
@@ -1146,8 +1268,6 @@ function createWindTurbineMesh() {
 
 // 5. 🏺 Ceramic Vase
 function createVaseMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'vase'; currentTopicTitle = 'Ceramic Vase'; meshGroup = new THREE.Group();
 
   const points = [];
@@ -1162,8 +1282,6 @@ function createVaseMesh() {
 
 // 6. 📱 Phone Case
 function createPhoneCaseMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'phone'; currentTopicTitle = 'Ergonomic Phone Case'; meshGroup = new THREE.Group();
 
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x818cf8, roughness: 0.3, metalness: 0.2 });
@@ -1182,8 +1300,6 @@ function createPhoneCaseMesh() {
 
 // 7. ⚔️ Fantasy Sword
 function createSwordMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'sword'; currentTopicTitle = 'Fantasy Sword'; meshGroup = new THREE.Group();
 
   const bladeMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xe2e8f0, roughness: 0.1, metalness: 0.95 });
@@ -1202,8 +1318,6 @@ function createSwordMesh() {
 
 // 8. ⚙️ Spur Gear
 function createGearMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'gear'; currentTopicTitle = 'Precision Spur Gear'; meshGroup = new THREE.Group();
 
   const gearShape = new THREE.Shape();
@@ -1232,8 +1346,6 @@ function createGearMesh() {
 
 // 9. 💡 Desk Lamp
 function createLampMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'lamp'; currentTopicTitle = 'Modern Desk Lamp'; meshGroup = new THREE.Group();
 
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x06b6d4, roughness: 0.3 });
@@ -1250,8 +1362,6 @@ function createLampMesh() {
 
 // 10. 🪑 Minimalist Chair
 function createChairMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'chair'; currentTopicTitle = 'Minimalist Chair'; meshGroup = new THREE.Group();
 
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.4 });
@@ -1272,8 +1382,6 @@ function createChairMesh() {
 
 // 11. 🛋️ Coffee Table
 function createTableMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'table'; currentTopicTitle = 'Modern Coffee Table'; meshGroup = new THREE.Group();
 
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xd97706, roughness: 0.6 });
@@ -1292,8 +1400,6 @@ function createTableMesh() {
 
 // 12. 🪴 Flower Pot & Saucer
 function createFlowerPotMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'pot'; currentTopicTitle = 'Flower Pot & Saucer'; meshGroup = new THREE.Group();
 
   const potMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xea580c, roughness: 0.8 });
@@ -1308,8 +1414,6 @@ function createFlowerPotMesh() {
 
 // 13. 🏎️ Supercar Model
 function createCarMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'car'; currentTopicTitle = 'Aerodynamic Supercar'; meshGroup = new THREE.Group();
 
   const bodyMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xef4444, roughness: 0.2, metalness: 0.5 });
@@ -1331,8 +1435,6 @@ function createCarMesh() {
 
 // 14. 🎧 Headphone Stand
 function createHeadphoneStandMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'headphone'; currentTopicTitle = 'Retro Headphone Stand'; meshGroup = new THREE.Group();
 
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x818cf8, roughness: 0.3 });
@@ -1348,8 +1450,6 @@ function createHeadphoneStandMesh() {
 
 // 15. ♟️ Chess King Piece
 function createChessKingMesh() {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'chess'; currentTopicTitle = 'Chess King Piece'; meshGroup = new THREE.Group();
 
   const points = [];
@@ -1375,8 +1475,6 @@ function createChessKingMesh() {
 
 // Fallback Intricate Modular CAD Assembly Generator
 function createGenericCADMesh(title) {
-  hideEmptyBadge();
-  if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'generic'; currentTopicTitle = title || 'Custom CAD Assembly'; meshGroup = new THREE.Group();
 
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.3, metalness: 0.4, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
@@ -1401,26 +1499,32 @@ function setTelemetry(vol, weight, cost, time) {
 
 function updateMeshByPrompt(text) {
   const lower = text.toLowerCase();
-  if (lower.includes("mug") || lower.includes("heart")) createHeartMugMesh();
-  else if (lower.includes("hammer")) createHammerMesh();
-  else if (lower.includes("rocket")) createRocketshipMesh();
-  else if (lower.includes("turbine") || lower.includes("wind")) createWindTurbineMesh();
-  else if (lower.includes("vase")) createVaseMesh();
-  else if (lower.includes("phone") || lower.includes("case")) createPhoneCaseMesh();
-  else if (lower.includes("sword") || lower.includes("blade")) createSwordMesh();
-  else if (lower.includes("gear") || lower.includes("cog")) createGearMesh();
-  else if (lower.includes("lamp") || lower.includes("light")) createLampMesh();
-  else if (lower.includes("chair") || lower.includes("seat")) createChairMesh();
-  else if (lower.includes("table") || lower.includes("desk")) createTableMesh();
-  else if (lower.includes("pot") || lower.includes("flower") || lower.includes("planter")) createFlowerPotMesh();
-  else if (lower.includes("car") || lower.includes("auto")) createCarMesh();
-  else if (lower.includes("headphone") || lower.includes("headset")) createHeadphoneStandMesh();
-  else if (lower.includes("chess") || lower.includes("king")) createChessKingMesh();
-  else createGenericCADMesh(text);
+  startAILoadingAnimation(text, () => {
+    if (lower.includes("mug") || lower.includes("heart")) createHeartMugMesh();
+    else if (lower.includes("hammer")) createHammerMesh();
+    else if (lower.includes("rocket")) createRocketshipMesh();
+    else if (lower.includes("turbine") || lower.includes("wind")) createWindTurbineMesh();
+    else if (lower.includes("vase")) createVaseMesh();
+    else if (lower.includes("phone") || lower.includes("case")) createPhoneCaseMesh();
+    else if (lower.includes("sword") || lower.includes("blade")) createSwordMesh();
+    else if (lower.includes("gear") || lower.includes("cog")) createGearMesh();
+    else if (lower.includes("lamp") || lower.includes("light")) createLampMesh();
+    else if (lower.includes("chair") || lower.includes("seat")) createChairMesh();
+    else if (lower.includes("table") || lower.includes("desk")) createTableMesh();
+    else if (lower.includes("pot") || lower.includes("flower") || lower.includes("planter")) createFlowerPotMesh();
+    else if (lower.includes("car") || lower.includes("auto")) createCarMesh();
+    else if (lower.includes("headphone") || lower.includes("headset")) createHeadphoneStandMesh();
+    else if (lower.includes("chess") || lower.includes("king")) createChessKingMesh();
+    else createGenericCADMesh(text);
+  });
 }
 
 function animate() {
   requestAnimationFrame(animate);
+  if (holoSphere && holoSphere.visible) {
+    holoSphere.rotation.y += 0.02;
+    holoSphere.rotation.x += 0.01;
+  }
   if (meshGroup && isRotating) meshGroup.rotation.y += 0.005;
   controls.update();
   renderer.render(scene, camera);
