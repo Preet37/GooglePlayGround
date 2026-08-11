@@ -356,6 +356,45 @@
     display: block;
   }
 
+  /* Empty Plate Initial Overlay Badge */
+  .empty-plate-badge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 1.25rem 2rem;
+    border-radius: 20px;
+    color: #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: 'Outfit', sans-serif;
+    pointer-events: none;
+    z-index: 15;
+    box-shadow: 0 12px 35px rgba(0,0,0,0.6);
+    transition: opacity 0.3s ease;
+  }
+
+  .empty-plate-badge .badge-icon {
+    font-size: 2.5rem;
+    color: #38bdf8;
+  }
+
+  .empty-plate-badge .badge-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+
+  .empty-plate-badge .badge-sub {
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
   /* Left Vertical Slicer Tool Bar */
   .slicer-toolbar {
     position: absolute;
@@ -709,7 +748,7 @@
       <button class="clear-btn" onclick="clearHistory()">Clear Chat</button>
     </div>
 
-    <!-- Quick Prompts Chips Carousel (15 Curated High-Quality Demos) -->
+    <!-- Quick Prompts Chips Carousel (15 Demos) -->
     <div class="quick-prompts">
       <div class="chip" onclick="sendPrompt('design a heart shaped mug')">💖 Heart Mug</div>
       <div class="chip" onclick="sendPrompt('build a heavy duty shelf hammer')">🔨 Hammer</div>
@@ -746,6 +785,13 @@
   <!-- Right Studio Canvas: Interactive 3D WebGL Viewport -->
   <div class="viewport-container">
     <canvas id="webgl-canvas"></canvas>
+
+    <!-- Empty Build Plate Initial State Badge -->
+    <div class="empty-plate-badge" id="empty-badge">
+      <span class="material-symbols-outlined badge-icon">grid_on</span>
+      <span class="badge-title">Build Plate Ready</span>
+      <span class="badge-sub">Click a prompt chip or type any CAD prompt to generate 3D model</span>
+    </div>
 
     <!-- Left Vertical Slicer Toolbar -->
     <div class="slicer-toolbar">
@@ -799,18 +845,15 @@
     <div class="toolpath-slider-container">
       <span class="material-symbols-outlined" style="font-size:1.15rem; color:#06b6d4;">precision_manufacturing</span>
       <input type="range" class="toolpath-slider" id="toolpath-range" min="0" max="100" value="100" oninput="updateToolpathScrub(this.value)">
-      <span style="font-size:0.75rem; font-family:'JetBrains Mono', monospace; color:#38bdf8;" id="toolpath-val">Extrusion: 1278386</span>
+      <span style="font-size:0.75rem; font-family:'JetBrains Mono', monospace; color:#38bdf8;" id="toolpath-val">Extrusion: --</span>
     </div>
 
     <!-- Live G-Code Terminal Window -->
     <div class="gcode-terminal" id="gcode-term">
       <div style="color:#94a3b8; font-size:0.62rem; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:0.3rem;">G-CODE TOOLPATH STREAM</div>
       <div id="gcode-lines">
-        1278183 G1 X121.943 Y107.691 E.01488<br>
-        1278184 G1 X122.379 Y107.643 E.01485<br>
-        1278185 G1 X122.816 Y107.456 E.01609<br>
-        1278186 G1 X124.126 Y106.229 E.06075<br>
-        1278187 G1 X124.563 Y105.985 E.01694
+        System initialized.<br>
+        Awaiting 3D CAD prompt...
       </div>
     </div>
 
@@ -824,19 +867,19 @@
         <div class="hud-grid">
           <div class="stat-item">
             <span class="stat-label">Model Volume</span>
-            <span class="stat-value" id="hud-volume">320.0 cm³</span>
+            <span class="stat-value" id="hud-volume">--</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Filament Weight</span>
-            <span class="stat-value" id="hud-weight">285.0 g</span>
+            <span class="stat-value" id="hud-weight">--</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Est. Cost</span>
-            <span class="stat-value" id="hud-cost">$6.20</span>
+            <span class="stat-value" id="hud-cost">--</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">Print Time</span>
-            <span class="stat-value" id="hud-time">6h 10m</span>
+            <span class="stat-value" id="hud-time">--</span>
           </div>
         </div>
       </div>
@@ -856,8 +899,8 @@
 <script>
 let scene, camera, renderer, controls, transformControls, meshGroup, supportGroup, nozzleMesh;
 let clippingPlane;
-let currentModel = 'mug';
-let currentTopicTitle = 'Heart Mug';
+let currentModel = null;
+let currentTopicTitle = '';
 let isWireframe = false;
 let isRotating = false;
 let isSliceView = false;
@@ -907,7 +950,7 @@ function init3D() {
 
   createPEIBuildPlate();
   create3DNozzle();
-  createHeartMugMesh();
+  // Start with empty plate on refresh!
   animate();
 }
 
@@ -948,6 +991,11 @@ function create3DNozzle() {
 function snapToBed(group) {
   const bbox = new THREE.Box3().setFromObject(group);
   group.position.y = -bbox.min.y;
+}
+
+function hideEmptyBadge() {
+  const badge = document.getElementById("empty-badge");
+  if (badge) badge.style.display = "none";
 }
 
 function selectTool(tool) {
@@ -994,6 +1042,7 @@ function toggleSupports() {
 
 // 1. 💖 Heart Mug
 function createHeartMugMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'mug'; currentTopicTitle = 'Heart Mug'; meshGroup = new THREE.Group();
 
@@ -1035,6 +1084,7 @@ function createHeartMugMesh() {
 
 // 2. 🔨 Hammer
 function createHammerMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'hammer'; currentTopicTitle = 'Heavy Duty Hammer'; meshGroup = new THREE.Group();
 
@@ -1056,6 +1106,7 @@ function createHammerMesh() {
 
 // 3. 🚀 Rocketship
 function createRocketshipMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'rocket'; currentTopicTitle = 'Mini Rocketship'; meshGroup = new THREE.Group();
 
@@ -1078,6 +1129,7 @@ function createRocketshipMesh() {
 
 // 4. 🌀 Wind Turbine
 function createWindTurbineMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'turbine'; currentTopicTitle = 'Wind Turbine'; meshGroup = new THREE.Group();
 
@@ -1094,6 +1146,7 @@ function createWindTurbineMesh() {
 
 // 5. 🏺 Ceramic Vase
 function createVaseMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'vase'; currentTopicTitle = 'Ceramic Vase'; meshGroup = new THREE.Group();
 
@@ -1107,8 +1160,9 @@ function createVaseMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 6. 📱 Phone Case / Stand
+// 6. 📱 Phone Case
 function createPhoneCaseMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'phone'; currentTopicTitle = 'Ergonomic Phone Case'; meshGroup = new THREE.Group();
 
@@ -1128,6 +1182,7 @@ function createPhoneCaseMesh() {
 
 // 7. ⚔️ Fantasy Sword
 function createSwordMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'sword'; currentTopicTitle = 'Fantasy Sword'; meshGroup = new THREE.Group();
 
@@ -1147,6 +1202,7 @@ function createSwordMesh() {
 
 // 8. ⚙️ Spur Gear
 function createGearMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'gear'; currentTopicTitle = 'Precision Spur Gear'; meshGroup = new THREE.Group();
 
@@ -1176,6 +1232,7 @@ function createGearMesh() {
 
 // 9. 💡 Desk Lamp
 function createLampMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'lamp'; currentTopicTitle = 'Modern Desk Lamp'; meshGroup = new THREE.Group();
 
@@ -1193,6 +1250,7 @@ function createLampMesh() {
 
 // 10. 🪑 Minimalist Chair
 function createChairMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'chair'; currentTopicTitle = 'Minimalist Chair'; meshGroup = new THREE.Group();
 
@@ -1214,6 +1272,7 @@ function createChairMesh() {
 
 // 11. 🛋️ Coffee Table
 function createTableMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'table'; currentTopicTitle = 'Modern Coffee Table'; meshGroup = new THREE.Group();
 
@@ -1233,6 +1292,7 @@ function createTableMesh() {
 
 // 12. 🪴 Flower Pot & Saucer
 function createFlowerPotMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'pot'; currentTopicTitle = 'Flower Pot & Saucer'; meshGroup = new THREE.Group();
 
@@ -1248,6 +1308,7 @@ function createFlowerPotMesh() {
 
 // 13. 🏎️ Supercar Model
 function createCarMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'car'; currentTopicTitle = 'Aerodynamic Supercar'; meshGroup = new THREE.Group();
 
@@ -1270,6 +1331,7 @@ function createCarMesh() {
 
 // 14. 🎧 Headphone Stand
 function createHeadphoneStandMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'headphone'; currentTopicTitle = 'Retro Headphone Stand'; meshGroup = new THREE.Group();
 
@@ -1286,6 +1348,7 @@ function createHeadphoneStandMesh() {
 
 // 15. ♟️ Chess King Piece
 function createChessKingMesh() {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'chess'; currentTopicTitle = 'Chess King Piece'; meshGroup = new THREE.Group();
 
@@ -1312,6 +1375,7 @@ function createChessKingMesh() {
 
 // Fallback Intricate Modular CAD Assembly Generator
 function createGenericCADMesh(title) {
+  hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   currentModel = 'generic'; currentTopicTitle = title || 'Custom CAD Assembly'; meshGroup = new THREE.Group();
 
@@ -1374,12 +1438,14 @@ function toggleRotation() {
 }
 
 function toggleSlicePreview() {
+  if (!currentTopicTitle) return;
   isSliceView = !isSliceView;
   document.getElementById("slice-preview-btn").classList.toggle("active", isSliceView);
   updateMeshByPrompt(currentTopicTitle);
 }
 
 function updateLayerCut(val) {
+  if (!meshGroup) return;
   const cutY = (val / 100) * modelHeight;
   clippingPlane.constant = cutY;
 
@@ -1409,6 +1475,7 @@ function updateToolpathScrub(val) {
 }
 
 function exportGCode() {
+  if (!currentModel) return;
   const gcodeText = `; Generated by PrintCraft 3D Studio - Gemini 2.5 Copilot\n; Model: ${currentModel} (${currentTopicTitle})\nM104 S215\nM140 S60\nG28 ; home all axes\nG1 Z0.2 F1200\nG1 X10 Y10 E10 F1500\n; Slicing complete`;
   const blob = new Blob([gcodeText], { type: 'text/plain' });
   const a = document.createElement('a');
