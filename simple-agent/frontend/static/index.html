@@ -359,7 +359,7 @@
     display: block;
   }
 
-  /* Left Vertical Slicer Tool Bar (Prusa / Bambu Style) */
+  /* Left Vertical Slicer Tool Bar with Hover Tooltips */
   .slicer-toolbar {
     position: absolute;
     top: 1.25rem;
@@ -376,6 +376,7 @@
   }
 
   .tool-btn {
+    position: relative;
     width: 38px;
     height: 38px;
     border-radius: 8px;
@@ -393,6 +394,32 @@
     background: rgba(56, 189, 248, 0.2);
     border-color: rgba(56, 189, 248, 0.4);
     color: #38bdf8;
+  }
+
+  /* Hover Tooltip Popup */
+  .tool-btn::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: 48px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    color: #f8fafc;
+    border: 1px solid var(--panel-border);
+    padding: 0.35rem 0.65rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+
+  .tool-btn:hover::after {
+    opacity: 1;
+    visibility: visible;
   }
 
   /* HUD Stats Overlay */
@@ -556,15 +583,15 @@
     <!-- Topic Input Bar -->
     <div class="topic-bar">
       <span class="material-symbols-outlined" style="font-size:1.1rem; color:#38bdf8;">model_training</span>
-      <input id="topic-input" class="topic-input" placeholder="3D Model Topic (e.g. heart mug, wind turbine)…" onkeydown="if(event.key==='Enter') applyTopic(this.value)">
+      <input id="topic-input" class="topic-input" placeholder="3D Model Topic (e.g. heart mug, mini rocketship, wind turbine)…" onkeydown="if(event.key==='Enter') applyTopic(this.value)">
     </div>
 
-    <!-- Quick Prompts -->
+    <!-- Quick Prompts Chips -->
     <div class="quick-prompts">
       <div class="chip" onclick="sendPrompt('i want to desing a mug shaped in a heart shape.')">💖 Heart Mug</div>
+      <div class="chip" onclick="sendPrompt('build me a mini rocketship')">🚀 Mini Rocketship</div>
       <div class="chip" onclick="sendPrompt('design a wind turbine 3d model')">🌀 Wind Turbine</div>
-      <div class="chip" onclick="sendPrompt('Check Bambu X1C specs')">🖨️ Bambu X1C Specs</div>
-      <div class="chip" onclick="sendPrompt('Calculate print time and cost for 150cm³ PLA')">📊 Cost (150cm³)</div>
+      <div class="chip" onclick="sendPrompt('Check Bambu X1C specs')">🖨️ Bambu Specs</div>
     </div>
 
     <!-- Chat Log -->
@@ -586,16 +613,16 @@
   <div class="viewport-container">
     <canvas id="webgl-canvas"></canvas>
 
-    <!-- Left Vertical Slicer Toolbar (Prusa / Bambu Style) -->
+    <!-- Left Vertical Slicer Toolbar with Hover Tooltips -->
     <div class="slicer-toolbar">
-      <button class="tool-btn active" title="Move (Translation)"><span class="material-symbols-outlined">open_with</span></button>
-      <button class="tool-btn" title="Rotate"><span class="material-symbols-outlined">3d_rotation</span></button>
-      <button class="tool-btn" title="Scale"><span class="material-symbols-outlined">aspect_ratio</span></button>
-      <button class="tool-btn" title="Place on Face"><span class="material-symbols-outlined">flip_to_back</span></button>
-      <button class="tool-btn" id="slice-preview-btn" title="G-Code Layer Slice Preview" onclick="toggleSlicePreview()">
+      <button class="tool-btn active" data-tooltip="Move Object [M]"><span class="material-symbols-outlined">open_with</span></button>
+      <button class="tool-btn" data-tooltip="Rotate Object [R]"><span class="material-symbols-outlined">3d_rotation</span></button>
+      <button class="tool-btn" data-tooltip="Scale Object [S]"><span class="material-symbols-outlined">aspect_ratio</span></button>
+      <button class="tool-btn" data-tooltip="Place Flat on Face [F]"><span class="material-symbols-outlined">flip_to_back</span></button>
+      <button class="tool-btn" id="slice-preview-btn" data-tooltip="G-Code Layer Slice Preview [L]" onclick="toggleSlicePreview()">
         <span class="material-symbols-outlined" style="color:#f97316;">layers</span>
       </button>
-      <button class="tool-btn" title="Paint Supports"><span class="material-symbols-outlined">brush</span></button>
+      <button class="tool-btn" data-tooltip="Paint Supports [P]"><span class="material-symbols-outlined">brush</span></button>
     </div>
 
     <!-- Layer Height Slider for G-Code Preview -->
@@ -655,7 +682,6 @@ let scene, camera, renderer, controls, meshGroup;
 let isWireframe = false;
 let isRotating = false;
 let isSliceView = false;
-let currentLayerPercent = 100;
 
 function init3D() {
   const container = document.querySelector('.viewport-container');
@@ -687,9 +713,7 @@ function init3D() {
   dirLight2.position.set(-100, -50, -100);
   scene.add(dirLight2);
 
-  // Realistic Physical PEI Magnetic Bed Plate Mesh (Prusa / Bambu Style)
   createPEIBuildPlate();
-
   createHeartMugMesh();
   animate();
 }
@@ -697,7 +721,6 @@ function init3D() {
 function createPEIBuildPlate() {
   const plateGroup = new THREE.Group();
 
-  // Dark PEI Sheet Geometry
   const plateGeom = new THREE.BoxGeometry(220, 4, 220);
   const plateMat = new THREE.MeshStandardMaterial({
     color: 0x1e293b,
@@ -705,10 +728,9 @@ function createPEIBuildPlate() {
     metalness: 0.2
   });
   const plateMesh = new THREE.Mesh(plateGeom, plateMat);
-  plateMesh.position.y = -2; // Surface rests exactly at y = 0
+  plateMesh.position.y = -2; // Plate surface at y = 0
   plateGroup.add(plateMesh);
 
-  // White Grid Lines on Plate Surface
   const grid = new THREE.GridHelper(220, 22, 0x38bdf8, 0x475569);
   grid.position.y = 0.1;
   plateGroup.add(grid);
@@ -718,7 +740,7 @@ function createPEIBuildPlate() {
 
 function snapToBed(group) {
   const bbox = new THREE.Box3().setFromObject(group);
-  group.position.y = -bbox.min.y; // Bottom face sits EXACTLY on build plate at y = 0
+  group.position.y = -bbox.min.y; // Model rests flush at y = 0
 }
 
 function createHeartMugMesh() {
@@ -726,7 +748,7 @@ function createHeartMugMesh() {
 
   meshGroup = new THREE.Group();
 
-  // Outer Heart Shape
+  // True Hollow Heart Shape with Open Top Rim
   const outerHeart = new THREE.Shape();
   const x = 0, y = 0;
   outerHeart.moveTo(x, y + 8);
@@ -737,11 +759,22 @@ function createHeartMugMesh() {
   outerHeart.bezierCurveTo(x + 38, y + 22, x + 38, y, x + 22, y);
   outerHeart.bezierCurveTo(x + 5, y, x, y + 8, x, y + 8);
 
-  const extrudeOuter = { depth: 42, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 2, bevelThickness: 2 };
-  const outerGeom = new THREE.ExtrudeGeometry(outerHeart, extrudeOuter);
-  outerGeom.center();
+  // Define Inner Hole Path to make top OPEN and HOLLOW
+  const innerPath = new THREE.Path();
+  innerPath.moveTo(x, y + 7);
+  innerPath.bezierCurveTo(x + 4, y + 2, x + 18, y + 2, x + 18, y + 2);
+  innerPath.bezierCurveTo(x + 32, y + 2, x + 32, y + 18, x + 32, y + 18);
+  innerPath.bezierCurveTo(x + 32, y + 32, x + 18, y + 46, x, y + 58);
+  innerPath.bezierCurveTo(x - 18, y + 46, x - 32, y + 32, x - 32, y + 18);
+  innerPath.bezierCurveTo(x - 32, y + 18, x - 32, y + 2, x - 18, y + 2);
+  innerPath.bezierCurveTo(x - 4, y + 2, x, y + 7, x, y + 7);
+  outerHeart.holes.push(innerPath);
 
-  const colorMat = isSliceView ? 0xf97316 : 0xf472b6; // Orange sliced G-code vs Pink Ceramic
+  const extrudeWall = { depth: 42, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 1.5, bevelThickness: 1.5 };
+  const wallGeom = new THREE.ExtrudeGeometry(outerHeart, extrudeWall);
+  wallGeom.center();
+
+  const colorMat = isSliceView ? 0xf97316 : 0xf472b6;
   const mugMat = new THREE.MeshStandardMaterial({
     color: colorMat,
     roughness: isSliceView ? 0.6 : 0.25,
@@ -749,35 +782,26 @@ function createHeartMugMesh() {
     wireframe: isWireframe
   });
 
-  const outerMesh = new THREE.Mesh(outerGeom, mugMat);
-  outerMesh.rotation.x = -Math.PI / 2; // Upright
-  meshGroup.add(outerMesh);
+  const wallMesh = new THREE.Mesh(wallGeom, mugMat);
+  wallMesh.rotation.x = -Math.PI / 2; // Standing Upright
+  meshGroup.add(wallMesh);
 
-  // Inner Hollow Cavity
-  const innerHeart = new THREE.Shape();
-  innerHeart.moveTo(x, y + 7);
-  innerHeart.bezierCurveTo(x, y + 7, x - 4, y + 2, x - 18, y + 2);
-  innerHeart.bezierCurveTo(x - 32, y + 2, x - 32, y + 18, x - 32, y + 18);
-  innerHeart.bezierCurveTo(x - 32, y + 32, x - 18, y + 46, x, y + 58);
-  innerHeart.bezierCurveTo(x + 18, y + 46, x + 32, y + 32, x + 32, y + 18);
-  innerHeart.bezierCurveTo(x + 32, y + 18, x + 32, y + 2, x + 18, y + 2);
-  innerHeart.bezierCurveTo(x + 4, y + 2, x, y + 7, x, y + 7);
+  // Solid Base Floor Disk
+  const baseHeart = new THREE.Shape();
+  baseHeart.moveTo(x, y + 8);
+  baseHeart.bezierCurveTo(x, y + 8, x - 5, y, x - 22, y);
+  baseHeart.bezierCurveTo(x - 38, y, x - 38, y + 22, x - 38, y + 22);
+  baseHeart.bezierCurveTo(x - 38, y + 38, x - 22, y + 54, x, y + 68);
+  baseHeart.bezierCurveTo(x + 22, y + 54, x + 38, y + 38, x + 38, y + 22);
+  baseHeart.bezierCurveTo(x + 38, y + 22, x + 38, y, x + 22, y);
+  baseHeart.bezierCurveTo(x + 5, y, x, y + 8, x, y + 8);
 
-  const extrudeInner = { depth: 39, bevelEnabled: false };
-  const innerGeom = new THREE.ExtrudeGeometry(innerHeart, extrudeInner);
-  innerGeom.center();
-
-  const innerMat = new THREE.MeshStandardMaterial({
-    color: isSliceView ? 0xef4444 : 0xfbcfe8,
-    roughness: 0.2,
-    metalness: 0.05,
-    wireframe: isWireframe
-  });
-
-  const innerMesh = new THREE.Mesh(innerGeom, innerMat);
-  innerMesh.rotation.x = -Math.PI / 2;
-  innerMesh.position.y = 2.5; // Solid 5mm base floor
-  meshGroup.add(innerMesh);
+  const baseGeom = new THREE.ExtrudeGeometry(baseHeart, { depth: 5, bevelEnabled: false });
+  baseGeom.center();
+  const baseMesh = new THREE.Mesh(baseGeom, mugMat);
+  baseMesh.rotation.x = -Math.PI / 2;
+  baseMesh.position.y = -18.5; // Solid floor
+  meshGroup.add(baseMesh);
 
   // Heart Loop Handle
   const handleTube = new THREE.TorusGeometry(14, 3.5, 16, 32, Math.PI * 1.2);
@@ -792,15 +816,60 @@ function createHeartMugMesh() {
   handleMesh.rotation.z = -Math.PI / 6;
   meshGroup.add(handleMesh);
 
-  // Snap model directly onto build plate surface at y = 0
   snapToBed(meshGroup);
-
   scene.add(meshGroup);
 
   document.getElementById("hud-volume").textContent = "320.0 cm³";
   document.getElementById("hud-weight").textContent = "285.0 g";
   document.getElementById("hud-cost").textContent = "$6.20";
   document.getElementById("hud-time").textContent = "6h 10m";
+}
+
+function createRocketshipMesh() {
+  if (meshGroup) scene.remove(meshGroup);
+
+  meshGroup = new THREE.Group();
+
+  const colorMat = isSliceView ? 0xf97316 : 0x38bdf8;
+  const mat = new THREE.MeshStandardMaterial({ color: colorMat, roughness: 0.2, metalness: 0.2, wireframe: isWireframe });
+
+  // Aerodynamic Rocket Fuselage
+  const bodyGeom = new THREE.CylinderGeometry(8, 14, 70, 32);
+  const bodyMesh = new THREE.Mesh(bodyGeom, mat);
+  bodyMesh.position.y = 35;
+  meshGroup.add(bodyMesh);
+
+  // Nosecone Tip
+  const noseGeom = new THREE.ConeGeometry(8, 30, 32);
+  const noseMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xef4444 : 0xf43f5e, roughness: 0.2, metalness: 0.3, wireframe: isWireframe });
+  const noseMesh = new THREE.Mesh(noseGeom, noseMat);
+  noseMesh.position.y = 85;
+  meshGroup.add(noseMesh);
+
+  // 4 Swept Stabilization Fins
+  for (let i = 0; i < 4; i++) {
+    const finGeom = new THREE.BoxGeometry(3, 25, 20);
+    const finMesh = new THREE.Mesh(finGeom, noseMat);
+    const angle = (i * Math.PI) / 2;
+    finMesh.position.set(Math.cos(angle) * 16, 12.5, Math.sin(angle) * 16);
+    finMesh.rotation.y = -angle;
+    meshGroup.add(finMesh);
+  }
+
+  // Engine Thruster Nozzle
+  const engineGeom = new THREE.CylinderGeometry(10, 6, 12, 32);
+  const engineMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.8, wireframe: isWireframe });
+  const engineMesh = new THREE.Mesh(engineGeom, engineMat);
+  engineMesh.position.y = -6;
+  meshGroup.add(engineMesh);
+
+  snapToBed(meshGroup);
+  scene.add(meshGroup);
+
+  document.getElementById("hud-volume").textContent = "195.0 cm³";
+  document.getElementById("hud-weight").textContent = "214.5 g";
+  document.getElementById("hud-cost").textContent = "$4.72";
+  document.getElementById("hud-time").textContent = "4h 45m";
 }
 
 function createWindTurbineMesh() {
@@ -831,7 +900,9 @@ function createWindTurbineMesh() {
 
 function updateMeshByPrompt(text) {
   const lower = text.toLowerCase();
-  if (lower.includes("heart") || lower.includes("mug")) {
+  if (lower.includes("rocket") || lower.includes("rocketship")) {
+    createRocketshipMesh();
+  } else if (lower.includes("heart") || lower.includes("mug")) {
     createHeartMugMesh();
   } else if (lower.includes("turbine") || lower.includes("wind")) {
     createWindTurbineMesh();
@@ -841,7 +912,7 @@ function updateMeshByPrompt(text) {
 function applyTopic(val) {
   if (!val) return;
   document.getElementById("topic-input").value = val;
-  sendPrompt(`Design a 3D CAD model and slicing plan for topic: ${val}`);
+  sendPrompt(`build me a ${val}`);
 }
 
 function animate() {
@@ -873,10 +944,9 @@ function toggleSlicePreview() {
 }
 
 function updateLayerCut(val) {
-  currentLayerPercent = val;
   if (meshGroup) {
     const scaleY = val / 100;
-    meshGroup.scale.set(1, scaleY, 1);
+    meshGroup.scale.set(1, Math.max(scaleY, 0.02), 1);
     snapToBed(meshGroup);
   }
 }
@@ -996,7 +1066,7 @@ function renderReply(b, parts, userText) {
   b.textContent = "";
   const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
   const textStr = texts.join("\n\n").trim();
-  const finalText = textStr || "I have generated your 3D CAD heart mug specifications using PETG material, 4 perimeter walls, and a 235°C nozzle temperature.";
+  const finalText = textStr || "Generated 3D CAD model specifications and slicing parameters for your prompt.";
 
   b.innerHTML = formatMarkdown(finalText);
 
