@@ -743,7 +743,7 @@
     position: absolute;
     bottom: 1.5rem;
     left: 18.5rem;
-    right: 18.5rem;
+    right: 32rem;
     background: var(--panel-bg);
     backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
@@ -752,6 +752,24 @@
     display: flex;
     align-items: center;
     gap: 1rem;
+    z-index: 20;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  }
+
+  /* Feature 4: Exploded Assembly Slider Container */
+  .exploded-slider-container {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 13.5rem;
+    width: 270px;
+    background: var(--panel-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(168, 85, 247, 0.4);
+    border-radius: 14px;
+    padding: 0.6rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
     z-index: 20;
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   }
@@ -970,7 +988,24 @@
       <button class="tool-btn" id="slice-preview-btn" data-tooltip="G-Code Layer Slice Preview [L]" onclick="toggleSlicePreview()">
         <span class="material-symbols-outlined" style="color:#f97316;">layers</span>
       </button>
-      <button class="tool-btn" id="tool-support" data-tooltip="Paint Supports [P]" onclick="toggleSupports()"><span class="material-symbols-outlined">brush</span></button>
+      <!-- Feature 3: Organic Tree Supports Button -->
+      <button class="tool-btn" id="tool-tree-support" data-tooltip="Organic Tree Supports [T]" onclick="toggleTreeSupports()"><span class="material-symbols-outlined" style="color:#10b981;">park</span></button>
+      <!-- Feature 5: FEA Stress Analysis Heatmap Button -->
+      <button class="tool-btn" id="tool-fea" data-tooltip="FEA Stress Heatmap [FEA]" onclick="toggleFEAMode()"><span class="material-symbols-outlined" style="color:#ec4899;">equalizer</span></button>
+    </div>
+
+    <!-- Feature 5: FEA Load Stress Legend Card -->
+    <div class="legend-card" id="fea-legend-card" style="display:none; top: 1.25rem; left: 5rem; width:250px;">
+      <div class="legend-header">
+        <span>FEA Load Stress Scale</span>
+        <span class="material-symbols-outlined" style="font-size:0.95rem; color:#ec4899;">speed</span>
+      </div>
+      <div style="height:12px; border-radius:6px; background: linear-gradient(90deg, #2563eb, #06b6d4, #10b981, #eab308, #ef4444); margin-bottom:0.5rem;"></div>
+      <div style="display:flex; justify-content:space-between; font-size:0.68rem; font-family:'JetBrains Mono', monospace; color:var(--text-muted);">
+        <span>0 MPa (Low)</span>
+        <span>50 MPa</span>
+        <span>100 MPa (Max)</span>
+      </div>
     </div>
 
     <!-- Prusa Slicer Feature Type Color Legend Card -->
@@ -1018,6 +1053,14 @@
       <span class="material-symbols-outlined" style="font-size:1.15rem; color:#06b6d4;">precision_manufacturing</span>
       <input type="range" class="toolpath-slider" id="toolpath-range" min="0" max="100" value="100" oninput="updateToolpathScrub(this.value)">
       <span style="font-size:0.75rem; font-family:'JetBrains Mono', monospace; color:#0284c7;" id="toolpath-val">Extrusion: --</span>
+    </div>
+
+    <!-- Feature 4: Exploded Assembly View Slider Container -->
+    <div class="exploded-slider-container" id="explode-container">
+      <span class="material-symbols-outlined" style="font-size:1.1rem; color:#a855f7;">splitscreen</span>
+      <span style="font-size:0.72rem; font-family:'Outfit', sans-serif; font-weight:700; color:var(--text-main);">Explode:</span>
+      <input type="range" class="toolpath-slider" id="explode-range" min="0" max="100" value="0" style="accent-color:#a855f7;" oninput="updateExplodedView(this.value)">
+      <span style="font-size:0.72rem; font-family:'JetBrains Mono', monospace; color:#a855f7;" id="explode-val">0%</span>
     </div>
 
     <!-- Live G-Code Terminal Window -->
@@ -1071,6 +1114,7 @@
 <script>
 let scene, camera, renderer, controls, transformControls, meshGroup, supportGroup, nozzleMesh, holoSphere;
 let toolpathLineGroup = null;
+let explodeLinesGroup = null;
 let clippingPlane;
 let currentModel = null;
 let currentTopicTitle = '';
@@ -1078,6 +1122,7 @@ let isWireframe = false;
 let isRotating = false;
 let isSliceView = false;
 let hasSupports = false;
+let isFEAMode = false;
 let isGenerating = false;
 let isPrintingAnim = false;
 let printProgress = 0;
@@ -1229,6 +1274,7 @@ function startAILoadingAnimation(promptTitle, callback) {
   hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
   if (toolpathLineGroup) { scene.remove(toolpathLineGroup); toolpathLineGroup = null; }
+  if (explodeLinesGroup) { scene.remove(explodeLinesGroup); explodeLinesGroup = null; }
 
   holoSphere.visible = true;
   const loaderCard = document.getElementById("ai-loader");
@@ -1253,6 +1299,8 @@ function startAILoadingAnimation(promptTitle, callback) {
       isGenerating = false;
       callback();
       document.getElementById("layer-range").value = 100;
+      document.getElementById("explode-range").value = 0;
+      document.getElementById("explode-val").textContent = "0%";
       updateLayerCut(100);
     }, 600);
   }, 4800);
@@ -1267,7 +1315,6 @@ function getModelContourPoints(bounds) {
   const rz = bounds.radiusZ * 0.95;
 
   if (currentModel === 'mug') {
-    // Exact Heart parametric curve contour!
     for (let i = 0; i <= 60; i++) {
       const t = (i / 60) * Math.PI * 2;
       const hx = 16 * Math.pow(Math.sin(t), 3);
@@ -1275,7 +1322,6 @@ function getModelContourPoints(bounds) {
       points.push(new THREE.Vector2(cx + (hx / 16) * rx, cz + (hz / 17) * rz));
     }
   } else if (currentModel === 'gear') {
-    // Precision gear tooth contour
     const teeth = 12;
     for (let i = 0; i <= 60; i++) {
       const a = (i / 60) * Math.PI * 2;
@@ -1283,7 +1329,6 @@ function getModelContourPoints(bounds) {
       points.push(new THREE.Vector2(cx + Math.cos(a) * (rx * rMod), cz + Math.sin(a) * (rz * rMod)));
     }
   } else if (currentModel === 'hammer' || currentModel === 'phone' || currentModel === 'chair' || currentModel === 'table') {
-    // Box / Rectangular perimeter wall contour
     const pts = [
       new THREE.Vector2(cx - rx, cz - rz),
       new THREE.Vector2(cx + rx, cz - rz),
@@ -1300,7 +1345,6 @@ function getModelContourPoints(bounds) {
       points.push(new THREE.Vector2(p1.x + (p2.x - p1.x) * frac, p1.y + (p2.y - p1.y) * frac));
     }
   } else {
-    // Smooth parametric profile contour
     for (let i = 0; i <= 60; i++) {
       const a = (i / 60) * Math.PI * 2;
       points.push(new THREE.Vector2(cx + Math.cos(a) * rx, cz + Math.sin(a) * rz));
@@ -1319,7 +1363,7 @@ function renderGCodeToolpathLayer(cutY, bounds) {
   const rx = bounds.radiusX * 0.96;
   const rz = bounds.radiusZ * 0.96;
 
-  // 1. Skirt / Brim Loop (Green #22c55e) - Offset Contour
+  // 1. Skirt / Brim Loop (Green #22c55e)
   const brimPoints = [];
   for (let i = 0; i < contour.length; i++) {
     const pt = contour[i];
@@ -1332,13 +1376,13 @@ function renderGCodeToolpathLayer(cutY, bounds) {
   const brimLine = new THREE.Line(brimGeom, new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2.5 }));
   toolpathLineGroup.add(brimLine);
 
-  // 2. Outer Perimeter Loop (Orange #f97316) - Exact Model Contour
+  // 2. Outer Perimeter Loop (Orange #f97316)
   const outerPoints = contour.map(p => new THREE.Vector3(p.x, cutY + 0.15, p.y));
   const outerGeom = new THREE.BufferGeometry().setFromPoints(outerPoints);
   const outerLine = new THREE.Line(outerGeom, new THREE.LineBasicMaterial({ color: 0xf97316, linewidth: 3 }));
   toolpathLineGroup.add(outerLine);
 
-  // 3. Inner Perimeter Loop (Yellow #eab308) - Inner Offset Contour
+  // 3. Inner Perimeter Loop (Yellow #eab308)
   const innerPoints = [];
   for (let i = 0; i < contour.length; i++) {
     const pt = contour[i];
@@ -1369,6 +1413,113 @@ function renderGCodeToolpathLayer(cutY, bounds) {
   toolpathLineGroup.add(infillLines);
 
   scene.add(toolpathLineGroup);
+}
+
+// --- Feature 3: Organic Tree Support Structure Generator ---
+function toggleTreeSupports() {
+  if (!meshGroup) return;
+  hasSupports = !hasSupports;
+  document.getElementById('tool-tree-support').classList.toggle('active', hasSupports);
+  if (supportGroup) { scene.remove(supportGroup); supportGroup = null; }
+
+  if (hasSupports) {
+    supportGroup = new THREE.Group();
+    const bounds = getActiveModelBounds();
+    const treeMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3, metalness: 0.1, clippingPlanes: [clippingPlane] });
+
+    const overhangTargets = [
+      new THREE.Vector3(bounds.centerX - bounds.radiusX * 0.8, bounds.maxY * 0.7, bounds.centerZ - bounds.radiusZ * 0.8),
+      new THREE.Vector3(bounds.centerX + bounds.radiusX * 0.8, bounds.maxY * 0.7, bounds.centerZ - bounds.radiusZ * 0.8),
+      new THREE.Vector3(bounds.centerX - bounds.radiusX * 0.8, bounds.maxY * 0.7, bounds.centerZ + bounds.radiusZ * 0.8),
+      new THREE.Vector3(bounds.centerX + bounds.radiusX * 0.8, bounds.maxY * 0.7, bounds.centerZ + bounds.radiusZ * 0.8)
+    ];
+
+    overhangTargets.forEach(target => {
+      const base = new THREE.Vector3(target.x * 1.35, 0, target.z * 1.35);
+      const mid = new THREE.Vector3((base.x + target.x) / 2 + 6, target.y * 0.5, (base.z + target.z) / 2 + 6);
+      const curve = new THREE.CatmullRomCurve3([base, mid, target]);
+
+      const tubeGeom = new THREE.TubeGeometry(curve, 24, 2.8, 12, false);
+      const tubeMesh = new THREE.Mesh(tubeGeom, treeMat);
+      supportGroup.add(tubeMesh);
+
+      const sphereGeom = new THREE.SphereGeometry(3.5, 12, 12);
+      const sphereMesh = new THREE.Mesh(sphereGeom, treeMat);
+      sphereMesh.position.copy(target);
+      supportGroup.add(sphereMesh);
+    });
+
+    scene.add(supportGroup);
+  }
+}
+
+// --- Feature 4: Interactive Exploded View Assembly Slider ---
+function updateExplodedView(val) {
+  document.getElementById("explode-val").textContent = `${val}%`;
+  if (!meshGroup) return;
+
+  if (explodeLinesGroup) { scene.remove(explodeLinesGroup); explodeLinesGroup = null; }
+  explodeLinesGroup = new THREE.Group();
+
+  const factor = (val / 100) * 35;
+
+  meshGroup.children.forEach(child => {
+    if (child.userData && child.userData.explodeVector) {
+      const orig = child.userData.originalPos || new THREE.Vector3();
+      const vec = child.userData.explodeVector;
+      child.position.copy(orig).addScaledVector(vec, factor);
+
+      if (val > 2) {
+        const linePoints = [orig.clone().add(meshGroup.position), child.position.clone().add(meshGroup.position)];
+        const lineGeom = new THREE.BufferGeometry().setFromPoints(linePoints);
+        const lineMat = new THREE.LineDashedMaterial({ color: 0xa855f7, dashSize: 2, gapSize: 2 });
+        const lineMesh = new THREE.Line(lineGeom, lineMat);
+        lineMesh.computeLineDistances();
+        explodeLinesGroup.add(lineMesh);
+      }
+    }
+  });
+
+  if (val > 2) scene.add(explodeLinesGroup);
+  updateLayerCut(document.getElementById("layer-range").value);
+}
+
+// --- Feature 5: FEA Load Stress Heatmap Generator ---
+function toggleFEAMode() {
+  if (!meshGroup) return;
+  isFEAMode = !isFEAMode;
+  document.getElementById("tool-fea").classList.toggle("active", isFEAMode);
+  document.getElementById("fea-legend-card").style.display = isFEAMode ? "block" : "none";
+
+  meshGroup.children.forEach(child => {
+    if (isFEAMode) {
+      const geom = child.geometry;
+      if (!geom.attributes.position) return;
+      const count = geom.attributes.position.count;
+      const colors = new Float32Array(count * 3);
+      const pos = geom.attributes.position;
+
+      for (let i = 0; i < count; i++) {
+        const y = pos.getY(i);
+        const ratio = Math.min(Math.max((y + 20) / 80, 0), 1);
+        const col = new THREE.Color();
+        col.setHSL(0.6 - ratio * 0.6, 0.9, 0.5); // Gradient Blue -> Green -> Yellow -> Red
+        colors[i * 3] = col.r;
+        colors[i * 3 + 1] = col.g;
+        colors[i * 3 + 2] = col.b;
+      }
+      geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      child.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.3, metalness: 0.2, clippingPlanes: [clippingPlane] });
+    } else {
+      child.material = child.userData.originalMaterial || new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3, clippingPlanes: [clippingPlane] });
+    }
+  });
+}
+
+function registerChildForExplosion(child, vector, originalPos) {
+  child.userData.explodeVector = vector;
+  child.userData.originalPos = originalPos ? originalPos.clone() : child.position.clone();
+  child.userData.originalMaterial = child.material;
 }
 
 // --- Feature 3: Animated 3D Print Timelapse Simulator ---
@@ -1420,6 +1571,7 @@ function handleFileImport(event) {
         mesh.scale.set(scale, scale, scale);
       }
 
+      registerChildForExplosion(mesh, new THREE.Vector3(0, 1, 0), mesh.position);
       meshGroup.add(mesh);
       snapToBed(meshGroup); scene.add(meshGroup);
       setTelemetry("180.0 cm³", "198.0 g", "$4.35", "4h 15m");
@@ -1476,7 +1628,7 @@ function setupDragAndDrop() {
 
 function selectTool(tool) {
   document.querySelectorAll('.slicer-toolbar .tool-btn').forEach(btn => {
-    if (btn.id !== 'slice-preview-btn' && btn.id !== 'tool-support' && btn.id !== 'tool-upload') btn.classList.remove('active');
+    if (btn.id !== 'slice-preview-btn' && btn.id !== 'tool-tree-support' && btn.id !== 'tool-fea' && btn.id !== 'tool-upload') btn.classList.remove('active');
   });
 
   if (!meshGroup) return;
@@ -1495,28 +1647,7 @@ function selectTool(tool) {
   }
 }
 
-function toggleSupports() {
-  hasSupports = !hasSupports;
-  document.getElementById('tool-support').classList.toggle('active', hasSupports);
-  if (hasSupports) {
-    if (supportGroup) scene.remove(supportGroup);
-    supportGroup = new THREE.Group();
-    const bounds = getActiveModelBounds();
-    const supMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.5, clippingPlanes: [clippingPlane] });
-    for (let i = 0; i < 6; i++) {
-      const supGeom = new THREE.CylinderGeometry(1.5, 3, bounds.height * 0.5, 12);
-      const supMesh = new THREE.Mesh(supGeom, supMat);
-      const angle = (i * Math.PI) / 3;
-      supMesh.position.set(bounds.centerX + Math.cos(angle) * (bounds.radiusX * 1.1), bounds.minY + bounds.height * 0.25, bounds.centerZ + Math.sin(angle) * (bounds.radiusZ * 1.1));
-      supportGroup.add(supMesh);
-    }
-    scene.add(supportGroup);
-  } else if (supportGroup) {
-    scene.remove(supportGroup);
-  }
-}
-
-// --- 15 High-Quality Bespoke 3D CAD Generators ---
+// --- 15 High-Quality Bespoke 3D CAD Generators with Assembly Explode Tags ---
 
 function createHeartMugMesh() {
   currentModel = 'mug'; currentTopicTitle = 'Heart Mug'; meshGroup = new THREE.Group();
@@ -1544,11 +1675,13 @@ function createHeartMugMesh() {
   const mugMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xf472b6, roughness: 0.2, metalness: 0.15, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
   const wallMesh = new THREE.Mesh(wallGeom, mugMat);
   wallMesh.rotation.x = -Math.PI / 2;
+  registerChildForExplosion(wallMesh, new THREE.Vector3(0, -0.2, 0), wallMesh.position);
   meshGroup.add(wallMesh);
 
   const handleCurve = new THREE.CatmullRomCurve3([ new THREE.Vector3(26, 16, 0), new THREE.Vector3(46, 18, 0), new THREE.Vector3(52, 0, 0), new THREE.Vector3(46, -18, 0), new THREE.Vector3(26, -16, 0) ]);
   const handleGeom = new THREE.TubeGeometry(handleCurve, 32, 3.8, 16, false);
   const handleMesh = new THREE.Mesh(handleGeom, mugMat);
+  registerChildForExplosion(handleMesh, new THREE.Vector3(1, 0, 0), handleMesh.position);
   meshGroup.add(handleMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
@@ -1561,14 +1694,20 @@ function createHammerMesh() {
   currentModel = 'hammer'; currentTopicTitle = 'Heavy Duty Hammer'; meshGroup = new THREE.Group();
   const handleGeom = new THREE.CylinderGeometry(3.5, 4.5, 75, 24);
   const handleMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7, metalness: 0.1, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
-  const handleMesh = new THREE.Mesh(handleGeom, handleMat); handleMesh.position.y = 37.5; meshGroup.add(handleMesh);
+  const handleMesh = new THREE.Mesh(handleGeom, handleMat); handleMesh.position.y = 37.5;
+  registerChildForExplosion(handleMesh, new THREE.Vector3(0, -1, 0), handleMesh.position);
+  meshGroup.add(handleMesh);
 
   const headGeom = new THREE.BoxGeometry(18, 14, 42);
   const headMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x94a3b8, roughness: 0.2, metalness: 0.85, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
-  const headMesh = new THREE.Mesh(headGeom, headMat); headMesh.position.set(0, 75, 6); meshGroup.add(headMesh);
+  const headMesh = new THREE.Mesh(headGeom, headMat); headMesh.position.set(0, 75, 6);
+  registerChildForExplosion(headMesh, new THREE.Vector3(0, 0.8, 0.5), headMesh.position);
+  meshGroup.add(headMesh);
 
   const clawGeom = new THREE.ConeGeometry(7, 24, 16);
-  const clawMesh = new THREE.Mesh(clawGeom, headMat); clawMesh.rotation.x = Math.PI / 3; clawMesh.position.set(0, 72, -18); meshGroup.add(clawMesh);
+  const clawMesh = new THREE.Mesh(clawGeom, headMat); clawMesh.rotation.x = Math.PI / 3; clawMesh.position.set(0, 72, -18);
+  registerChildForExplosion(clawMesh, new THREE.Vector3(0, 0.8, -1), clawMesh.position);
+  meshGroup.add(clawMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("240.0 cm³", "264.0 g", "$5.80", "5h 20m");
@@ -1579,15 +1718,21 @@ function createHammerMesh() {
 function createRocketshipMesh() {
   currentModel = 'rocket'; currentTopicTitle = 'Mini Rocketship'; meshGroup = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.25, metalness: 0.3, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
-  const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(10, 16, 75, 32), mat); bodyMesh.position.y = 37.5; meshGroup.add(bodyMesh);
+  const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(10, 16, 75, 32), mat); bodyMesh.position.y = 37.5;
+  registerChildForExplosion(bodyMesh, new THREE.Vector3(0, -0.2, 0), bodyMesh.position);
+  meshGroup.add(bodyMesh);
 
   const noseMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xef4444 : 0xf43f5e, roughness: 0.2, metalness: 0.4, clippingPlanes: [clippingPlane] });
-  const noseMesh = new THREE.Mesh(new THREE.ConeGeometry(10, 32, 32), noseMat); noseMesh.position.y = 91; meshGroup.add(noseMesh);
+  const noseMesh = new THREE.Mesh(new THREE.ConeGeometry(10, 32, 32), noseMat); noseMesh.position.y = 91;
+  registerChildForExplosion(noseMesh, new THREE.Vector3(0, 1, 0), noseMesh.position);
+  meshGroup.add(noseMesh);
 
   for (let i = 0; i < 4; i++) {
     const finMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 28, 22), noseMat);
     const angle = (i * Math.PI) / 2;
-    finMesh.position.set(Math.cos(angle) * 18, 14, Math.sin(angle) * 18); finMesh.rotation.y = -angle; meshGroup.add(finMesh);
+    finMesh.position.set(Math.cos(angle) * 18, 14, Math.sin(angle) * 18); finMesh.rotation.y = -angle;
+    registerChildForExplosion(finMesh, new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle)), finMesh.position);
+    meshGroup.add(finMesh);
   }
 
   snapToBed(meshGroup); scene.add(meshGroup);
@@ -1599,10 +1744,14 @@ function createRocketshipMesh() {
 function createWindTurbineMesh() {
   currentModel = 'turbine'; currentTopicTitle = 'Wind Turbine'; meshGroup = new THREE.Group();
   const towerMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xe2e8f0, roughness: 0.3, clippingPlanes: [clippingPlane] });
-  const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 5.5, 85, 24), towerMat); tower.position.y = 42.5; meshGroup.add(tower);
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 5.5, 85, 24), towerMat); tower.position.y = 42.5;
+  registerChildForExplosion(tower, new THREE.Vector3(0, -0.5, 0), tower.position);
+  meshGroup.add(tower);
 
   const nacelleMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.2, clippingPlanes: [clippingPlane] });
-  const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 20, 24), nacelleMat); nacelle.rotation.z = Math.PI / 2; nacelle.position.set(0, 85, 0); meshGroup.add(nacelle);
+  const nacelle = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 20, 24), nacelleMat); nacelle.rotation.z = Math.PI / 2; nacelle.position.set(0, 85, 0);
+  registerChildForExplosion(nacelle, new THREE.Vector3(0, 1, 0), nacelle.position);
+  meshGroup.add(nacelle);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("185.0 cm³", "203.5 g", "$4.48", "4h 30m");
@@ -1615,6 +1764,7 @@ function createVaseMesh() {
   const points = [];
   for (let i = 0; i <= 30; i++) points.push(new THREE.Vector2(10 + Math.sin(i * 0.3) * 8 + (i > 25 ? (i - 25) * 1.2 : 0), i * 2.5));
   const vaseMesh = new THREE.Mesh(new THREE.LatheGeometry(points, 32), new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x06b6d4, roughness: 0.15, metalness: 0.2, clippingPlanes: [clippingPlane] }));
+  registerChildForExplosion(vaseMesh, new THREE.Vector3(0, 1, 0), vaseMesh.position);
   meshGroup.add(vaseMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
@@ -1626,13 +1776,19 @@ function createVaseMesh() {
 function createPhoneCaseMesh() {
   currentModel = 'phone'; currentTopicTitle = 'Ergonomic Phone Case'; meshGroup = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x818cf8, roughness: 0.3, metalness: 0.2, clippingPlanes: [clippingPlane] });
-  const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(45, 90, 8), mat); bodyMesh.position.y = 45; meshGroup.add(bodyMesh);
+  const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(45, 90, 8), mat); bodyMesh.position.y = 45;
+  registerChildForExplosion(bodyMesh, new THREE.Vector3(0, 0, -0.5), bodyMesh.position);
+  meshGroup.add(bodyMesh);
 
   const lipMesh = new THREE.Mesh(new THREE.BoxGeometry(49, 94, 3), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, clippingPlanes: [clippingPlane] }));
-  lipMesh.position.set(0, 45, -2); meshGroup.add(lipMesh);
+  lipMesh.position.set(0, 45, -2);
+  registerChildForExplosion(lipMesh, new THREE.Vector3(0, 0, -1), lipMesh.position);
+  meshGroup.add(lipMesh);
 
   const cameraBump = new THREE.Mesh(new THREE.BoxGeometry(18, 22, 3), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9, clippingPlanes: [clippingPlane] }));
-  cameraBump.position.set(-10, 72, 5); meshGroup.add(cameraBump);
+  cameraBump.position.set(-10, 72, 5);
+  registerChildForExplosion(cameraBump, new THREE.Vector3(-0.5, 0.5, 1), cameraBump.position);
+  meshGroup.add(cameraBump);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("110.0 cm³", "121.0 g", "$2.66", "2h 40m");
@@ -1643,13 +1799,19 @@ function createPhoneCaseMesh() {
 function createSwordMesh() {
   currentModel = 'sword'; currentTopicTitle = 'Fantasy Sword'; meshGroup = new THREE.Group();
   const bladeMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xe2e8f0, roughness: 0.1, metalness: 0.95, clippingPlanes: [clippingPlane] });
-  const bladeMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 85, 3), bladeMat); bladeMesh.position.y = 52.5; meshGroup.add(bladeMesh);
+  const bladeMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 85, 3), bladeMat); bladeMesh.position.y = 52.5;
+  registerChildForExplosion(bladeMesh, new THREE.Vector3(0, 1, 0), bladeMesh.position);
+  meshGroup.add(bladeMesh);
 
   const guardMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.8, clippingPlanes: [clippingPlane] });
-  const guardMesh = new THREE.Mesh(new THREE.BoxGeometry(38, 6, 8), guardMat); guardMesh.position.y = 10; meshGroup.add(guardMesh);
+  const guardMesh = new THREE.Mesh(new THREE.BoxGeometry(38, 6, 8), guardMat); guardMesh.position.y = 10;
+  registerChildForExplosion(guardMesh, new THREE.Vector3(1, 0, 0), guardMesh.position);
+  meshGroup.add(guardMesh);
 
   const hiltMesh = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 20, 16), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8, clippingPlanes: [clippingPlane] }));
-  hiltMesh.position.y = -3; meshGroup.add(hiltMesh);
+  hiltMesh.position.y = -3;
+  registerChildForExplosion(hiltMesh, new THREE.Vector3(0, -1, 0), hiltMesh.position);
+  meshGroup.add(hiltMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("140.0 cm³", "154.0 g", "$3.38", "3h 15m");
@@ -1676,7 +1838,9 @@ function createGearMesh() {
   const gearGeom = new THREE.ExtrudeGeometry(gearShape, { depth: 14, bevelEnabled: true, bevelSize: 1, bevelThickness: 1 });
   gearGeom.center();
   const gearMesh = new THREE.Mesh(gearGeom, new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xf59e0b, roughness: 0.3, metalness: 0.6, clippingPlanes: [clippingPlane] }));
-  gearMesh.rotation.x = -Math.PI / 2; meshGroup.add(gearMesh);
+  gearMesh.rotation.x = -Math.PI / 2;
+  registerChildForExplosion(gearMesh, new THREE.Vector3(0, 1, 0), gearMesh.position);
+  meshGroup.add(gearMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("160.0 cm³", "176.0 g", "$3.87", "3h 45m");
@@ -1687,11 +1851,17 @@ function createGearMesh() {
 function createLampMesh() {
   currentModel = 'lamp'; currentTopicTitle = 'Modern Desk Lamp'; meshGroup = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x06b6d4, roughness: 0.3, clippingPlanes: [clippingPlane] });
-  const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(20, 22, 6, 32), mat); baseMesh.position.y = 3; meshGroup.add(baseMesh);
+  const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(20, 22, 6, 32), mat); baseMesh.position.y = 3;
+  registerChildForExplosion(baseMesh, new THREE.Vector3(0, -0.5, 0), baseMesh.position);
+  meshGroup.add(baseMesh);
 
-  const stemMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 65, 16), mat); stemMesh.position.set(0, 35, 0); meshGroup.add(stemMesh);
+  const stemMesh = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 65, 16), mat); stemMesh.position.set(0, 35, 0);
+  registerChildForExplosion(stemMesh, new THREE.Vector3(0, 0.2, -0.5), stemMesh.position);
+  meshGroup.add(stemMesh);
 
-  const shadeMesh = new THREE.Mesh(new THREE.ConeGeometry(18, 22, 32, 1, true), mat); shadeMesh.position.set(0, 68, 10); shadeMesh.rotation.x = Math.PI / 4; meshGroup.add(shadeMesh);
+  const shadeMesh = new THREE.Mesh(new THREE.ConeGeometry(18, 22, 32, 1, true), mat); shadeMesh.position.set(0, 68, 10); shadeMesh.rotation.x = Math.PI / 4;
+  registerChildForExplosion(shadeMesh, new THREE.Vector3(0, 1, 0.8), shadeMesh.position);
+  meshGroup.add(shadeMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("210.0 cm³", "231.0 g", "$5.08", "4h 50m");
@@ -1702,13 +1872,20 @@ function createLampMesh() {
 function createChairMesh() {
   currentModel = 'chair'; currentTopicTitle = 'Minimalist Chair'; meshGroup = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.4, clippingPlanes: [clippingPlane] });
-  const seatMesh = new THREE.Mesh(new THREE.BoxGeometry(40, 4, 40), mat); seatMesh.position.y = 30; meshGroup.add(seatMesh);
+  const seatMesh = new THREE.Mesh(new THREE.BoxGeometry(40, 4, 40), mat); seatMesh.position.y = 30;
+  registerChildForExplosion(seatMesh, new THREE.Vector3(0, 0.5, 0), seatMesh.position);
+  meshGroup.add(seatMesh);
 
-  const backMesh = new THREE.Mesh(new THREE.BoxGeometry(40, 35, 4), mat); backMesh.position.set(0, 48, -18); meshGroup.add(backMesh);
+  const backMesh = new THREE.Mesh(new THREE.BoxGeometry(40, 35, 4), mat); backMesh.position.set(0, 48, -18);
+  registerChildForExplosion(backMesh, new THREE.Vector3(0, 0.8, -1), backMesh.position);
+  meshGroup.add(backMesh);
 
+  let idx = 0;
   for (let x of [-17, 17]) {
     for (let z of [-17, 17]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(2, 1.5, 30, 16), mat); leg.position.set(x, 15, z); meshGroup.add(leg);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(2, 1.5, 30, 16), mat); leg.position.set(x, 15, z);
+      registerChildForExplosion(leg, new THREE.Vector3(x / 17, -0.8, z / 17), leg.position);
+      meshGroup.add(leg);
     }
   }
 
@@ -1721,11 +1898,15 @@ function createChairMesh() {
 function createTableMesh() {
   currentModel = 'table'; currentTopicTitle = 'Modern Coffee Table'; meshGroup = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xd97706, roughness: 0.6, clippingPlanes: [clippingPlane] });
-  const topMesh = new THREE.Mesh(new THREE.BoxGeometry(70, 5, 45), mat); topMesh.position.y = 28; meshGroup.add(topMesh);
+  const topMesh = new THREE.Mesh(new THREE.BoxGeometry(70, 5, 45), mat); topMesh.position.y = 28;
+  registerChildForExplosion(topMesh, new THREE.Vector3(0, 1, 0), topMesh.position);
+  meshGroup.add(topMesh);
 
   for (let x of [-30, 30]) {
     for (let z of [-18, 18]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 26, 16), mat); leg.position.set(x, 13, z); meshGroup.add(leg);
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 26, 16), mat); leg.position.set(x, 13, z);
+      registerChildForExplosion(leg, new THREE.Vector3(x / 30, -0.8, z / 18), leg.position);
+      meshGroup.add(leg);
     }
   }
 
@@ -1738,9 +1919,13 @@ function createTableMesh() {
 function createFlowerPotMesh() {
   currentModel = 'pot'; currentTopicTitle = 'Flower Pot & Saucer'; meshGroup = new THREE.Group();
   const potMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xea580c, roughness: 0.8, clippingPlanes: [clippingPlane] });
-  const potMesh = new THREE.Mesh(new THREE.CylinderGeometry(25, 18, 45, 32), potMat); potMesh.position.y = 27.5; meshGroup.add(potMesh);
+  const potMesh = new THREE.Mesh(new THREE.CylinderGeometry(25, 18, 45, 32), potMat); potMesh.position.y = 27.5;
+  registerChildForExplosion(potMesh, new THREE.Vector3(0, 1, 0), potMesh.position);
+  meshGroup.add(potMesh);
 
-  const saucerMesh = new THREE.Mesh(new THREE.CylinderGeometry(22, 22, 6, 32), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9, clippingPlanes: [clippingPlane] })); saucerMesh.position.y = 3; meshGroup.add(saucerMesh);
+  const saucerMesh = new THREE.Mesh(new THREE.CylinderGeometry(22, 22, 6, 32), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9, clippingPlanes: [clippingPlane] })); saucerMesh.position.y = 3;
+  registerChildForExplosion(saucerMesh, new THREE.Vector3(0, -0.8, 0), saucerMesh.position);
+  meshGroup.add(saucerMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("230.0 cm³", "253.0 g", "$5.56", "5h 10m");
@@ -1751,14 +1936,20 @@ function createFlowerPotMesh() {
 function createCarMesh() {
   currentModel = 'car'; currentTopicTitle = 'Aerodynamic Supercar'; meshGroup = new THREE.Group();
   const bodyMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xef4444, roughness: 0.2, metalness: 0.5, clippingPlanes: [clippingPlane] });
-  const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(35, 14, 75), bodyMat); bodyMesh.position.y = 12; meshGroup.add(bodyMesh);
+  const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(35, 14, 75), bodyMat); bodyMesh.position.y = 12;
+  registerChildForExplosion(bodyMesh, new THREE.Vector3(0, 0, 0), bodyMesh.position);
+  meshGroup.add(bodyMesh);
 
-  const cabinMesh = new THREE.Mesh(new THREE.BoxGeometry(28, 12, 38), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, clippingPlanes: [clippingPlane] })); cabinMesh.position.set(0, 22, -4); meshGroup.add(cabinMesh);
+  const cabinMesh = new THREE.Mesh(new THREE.BoxGeometry(28, 12, 38), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, clippingPlanes: [clippingPlane] })); cabinMesh.position.set(0, 22, -4);
+  registerChildForExplosion(cabinMesh, new THREE.Vector3(0, 1, 0), cabinMesh.position);
+  meshGroup.add(cabinMesh);
 
   const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9, clippingPlanes: [clippingPlane] });
   for (let x of [-18, 18]) {
     for (let z of [-22, 22]) {
-      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 6, 24), wheelMat); wheel.rotation.z = Math.PI / 2; wheel.position.set(x, 8, z); meshGroup.add(wheel);
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 6, 24), wheelMat); wheel.rotation.z = Math.PI / 2; wheel.position.set(x, 8, z);
+      registerChildForExplosion(wheel, new THREE.Vector3(x / 18, 0, z / 22), wheel.position);
+      meshGroup.add(wheel);
     }
   }
 
@@ -1771,10 +1962,14 @@ function createCarMesh() {
 function createHeadphoneStandMesh() {
   currentModel = 'headphone'; currentTopicTitle = 'Retro Headphone Stand'; meshGroup = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x818cf8, roughness: 0.3, clippingPlanes: [clippingPlane] });
-  const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(24, 26, 8, 32), mat); baseMesh.position.y = 4; meshGroup.add(baseMesh);
+  const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(24, 26, 8, 32), mat); baseMesh.position.y = 4;
+  registerChildForExplosion(baseMesh, new THREE.Vector3(0, -0.8, 0), baseMesh.position);
+  meshGroup.add(baseMesh);
 
   const arcCurve = new THREE.CatmullRomCurve3([ new THREE.Vector3(0, 8, 0), new THREE.Vector3(0, 50, 10), new THREE.Vector3(0, 85, 0), new THREE.Vector3(0, 80, -12) ]);
-  const arcMesh = new THREE.Mesh(new THREE.TubeGeometry(arcCurve, 32, 4, 16, false), mat); meshGroup.add(arcMesh);
+  const arcMesh = new THREE.Mesh(new THREE.TubeGeometry(arcCurve, 32, 4, 16, false), mat);
+  registerChildForExplosion(arcMesh, new THREE.Vector3(0, 1, 0), arcMesh.position);
+  meshGroup.add(arcMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("205.0 cm³", "225.5 g", "$4.96", "4h 40m");
@@ -1795,10 +1990,13 @@ function createChessKingMesh() {
   points.push(new THREE.Vector2(4, 62));
 
   const bodyMesh = new THREE.Mesh(new THREE.LatheGeometry(points, 32), new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xf8fafc, roughness: 0.25, clippingPlanes: [clippingPlane] }));
+  registerChildForExplosion(bodyMesh, new THREE.Vector3(0, -0.2, 0), bodyMesh.position);
   meshGroup.add(bodyMesh);
 
   const crossMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 12, 4), new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.2, metalness: 0.8, clippingPlanes: [clippingPlane] }));
-  crossMesh.position.y = 66; meshGroup.add(crossMesh);
+  crossMesh.position.y = 66;
+  registerChildForExplosion(crossMesh, new THREE.Vector3(0, 1, 0), crossMesh.position);
+  meshGroup.add(crossMesh);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("150.0 cm³", "165.0 g", "$3.63", "3h 30m");
@@ -1809,12 +2007,21 @@ function createChessKingMesh() {
 function createGenericCADMesh(title) {
   currentModel = 'generic'; currentTopicTitle = title || 'Custom CAD Assembly'; meshGroup = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.3, metalness: 0.4, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
-  const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(50, 8, 50), mat); baseMesh.position.y = 4; meshGroup.add(baseMesh);
+  const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(50, 8, 50), mat); baseMesh.position.y = 4;
+  registerChildForExplosion(baseMesh, new THREE.Vector3(0, -0.8, 0), baseMesh.position);
+  meshGroup.add(baseMesh);
 
-  const pillar1 = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 50, 24), mat); pillar1.position.set(-18, 33, -18); meshGroup.add(pillar1);
-  const pillar2 = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 50, 24), mat); pillar2.position.set(18, 33, 18); meshGroup.add(pillar2);
+  const pillar1 = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 50, 24), mat); pillar1.position.set(-18, 33, -18);
+  registerChildForExplosion(pillar1, new THREE.Vector3(-1, 0, -1), pillar1.position);
+  meshGroup.add(pillar1);
 
-  const topBeam = new THREE.Mesh(new THREE.BoxGeometry(46, 8, 46), mat); topBeam.position.y = 62; meshGroup.add(topBeam);
+  const pillar2 = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 50, 24), mat); pillar2.position.set(18, 33, 18);
+  registerChildForExplosion(pillar2, new THREE.Vector3(1, 0, 1), pillar2.position);
+  meshGroup.add(pillar2);
+
+  const topBeam = new THREE.Mesh(new THREE.BoxGeometry(46, 8, 46), mat); topBeam.position.y = 62;
+  registerChildForExplosion(topBeam, new THREE.Vector3(0, 1, 0), topBeam.position);
+  meshGroup.add(topBeam);
 
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("225.0 cm³", "247.5 g", "$5.40", "5h 15m");
@@ -1865,7 +2072,6 @@ function animate() {
     document.getElementById("layer-range").value = printProgress;
     updateLayerCut(printProgress);
     updateToolpathScrub((printProgress * 12) % 100);
-    // Part stays 100% stationary on PEI bed like a real 3D printer!
   } else if (meshGroup && isRotating) {
     meshGroup.rotation.y += 0.005;
   }
