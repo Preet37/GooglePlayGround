@@ -1362,6 +1362,7 @@ function renderGCodeToolpathLayer(cutY, bounds) {
   const cz = bounds.centerZ;
   const rx = bounds.radiusX * 0.96;
   const rz = bounds.radiusZ * 0.96;
+  const lineY = cutY + 0.35; // Lift toolpath lines above cut plane to eliminate z-fighting
 
   // 1. Skirt / Brim Loop (Green #22c55e)
   const brimPoints = [];
@@ -1370,16 +1371,16 @@ function renderGCodeToolpathLayer(cutY, bounds) {
     const dx = pt.x - cx;
     const dz = pt.y - cz;
     const len = Math.sqrt(dx * dx + dz * dz) || 1;
-    brimPoints.push(new THREE.Vector3(pt.x + (dx / len) * 8, cutY + 0.15, pt.y + (dz / len) * 8));
+    brimPoints.push(new THREE.Vector3(pt.x + (dx / len) * 8, lineY, pt.y + (dz / len) * 8));
   }
   const brimGeom = new THREE.BufferGeometry().setFromPoints(brimPoints);
-  const brimLine = new THREE.Line(brimGeom, new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2.5 }));
+  const brimLine = new THREE.Line(brimGeom, new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2.5, depthWrite: false }));
   toolpathLineGroup.add(brimLine);
 
   // 2. Outer Perimeter Loop (Orange #f97316)
-  const outerPoints = contour.map(p => new THREE.Vector3(p.x, cutY + 0.15, p.y));
+  const outerPoints = contour.map(p => new THREE.Vector3(p.x, lineY, p.y));
   const outerGeom = new THREE.BufferGeometry().setFromPoints(outerPoints);
-  const outerLine = new THREE.Line(outerGeom, new THREE.LineBasicMaterial({ color: 0xf97316, linewidth: 3 }));
+  const outerLine = new THREE.Line(outerGeom, new THREE.LineBasicMaterial({ color: 0xf97316, linewidth: 3, depthWrite: false }));
   toolpathLineGroup.add(outerLine);
 
   // 3. Inner Perimeter Loop (Yellow #eab308)
@@ -1388,10 +1389,10 @@ function renderGCodeToolpathLayer(cutY, bounds) {
     const pt = contour[i];
     const dx = pt.x - cx;
     const dz = pt.y - cz;
-    innerPoints.push(new THREE.Vector3(cx + dx * 0.9, cutY + 0.15, cz + dz * 0.9));
+    innerPoints.push(new THREE.Vector3(cx + dx * 0.9, lineY, cz + dz * 0.9));
   }
   const innerGeom = new THREE.BufferGeometry().setFromPoints(innerPoints);
-  const innerLine = new THREE.Line(innerGeom, new THREE.LineBasicMaterial({ color: 0xeab308, linewidth: 2 }));
+  const innerLine = new THREE.Line(innerGeom, new THREE.LineBasicMaterial({ color: 0xeab308, linewidth: 2, depthWrite: false }));
   toolpathLineGroup.add(innerLine);
 
   // 4. Infill Grid Lines (Red #ef4444)
@@ -1399,17 +1400,17 @@ function renderGCodeToolpathLayer(cutY, bounds) {
   const spacing = 4.5;
   for (let x = -rx + 4; x <= rx - 4; x += spacing) {
     const maxZ = Math.sqrt(Math.max(0, 1 - (x / rx) * (x / rx))) * (rz - 4);
-    infillPositions.push(cx + x, cutY + 0.15, cz - maxZ);
-    infillPositions.push(cx + x, cutY + 0.15, cz + maxZ);
+    infillPositions.push(cx + x, lineY, cz - maxZ);
+    infillPositions.push(cx + x, lineY, cz + maxZ);
   }
   for (let z = -rz + 4; z <= rz - 4; z += spacing) {
     const maxX = Math.sqrt(Math.max(0, 1 - (z / rz) * (z / rz))) * (rx - 4);
-    infillPositions.push(cx - maxX, cutY + 0.15, cz + z);
-    infillPositions.push(cx + maxX, cutY + 0.15, cz + z);
+    infillPositions.push(cx - maxX, lineY, cz + z);
+    infillPositions.push(cx + maxX, lineY, cz + z);
   }
   const infillGeom = new THREE.BufferGeometry();
   infillGeom.setAttribute('position', new THREE.Float32BufferAttribute(infillPositions, 3));
-  const infillLines = new THREE.LineSegments(infillGeom, new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 }));
+  const infillLines = new THREE.LineSegments(infillGeom, new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2, depthWrite: false }));
   toolpathLineGroup.add(infillLines);
 
   scene.add(toolpathLineGroup);
@@ -2101,31 +2102,37 @@ function toggleSlicePreview() {
 function updateLayerCut(val) {
   if (!meshGroup) return;
   const bounds = getActiveModelBounds();
-  const cutY = bounds.minY + (val / 100) * bounds.height;
-  clippingPlane.constant = cutY;
+  const layerNum = parseFloat(val);
 
-  const contour = getModelContourPoints(bounds);
-  const pt = contour[0] || new THREE.Vector2(bounds.centerX, bounds.centerZ);
-  nozzleMesh.position.y = cutY;
-  nozzleMesh.position.x = pt.x;
-  nozzleMesh.position.z = pt.y;
-  nozzleMesh.visible = (val < 100);
+  if (layerNum >= 99.5 && !isSliceView) {
+    clippingPlane.constant = 10000;
+    nozzleMesh.visible = false;
+    if (toolpathLineGroup) {
+      scene.remove(toolpathLineGroup);
+      toolpathLineGroup = null;
+    }
+  } else {
+    const cutY = bounds.minY + (layerNum / 100) * bounds.height;
+    clippingPlane.constant = cutY;
 
-  if (val < 100 || isSliceView) {
+    const contour = getModelContourPoints(bounds);
+    const pt = contour[0] || new THREE.Vector2(bounds.centerX, bounds.centerZ);
+    nozzleMesh.position.y = cutY;
+    nozzleMesh.position.x = pt.x;
+    nozzleMesh.position.z = pt.y;
+    nozzleMesh.visible = true;
+
     renderGCodeToolpathLayer(cutY, bounds);
-  } else if (toolpathLineGroup) {
-    scene.remove(toolpathLineGroup);
-    toolpathLineGroup = null;
   }
 
-  const lineCount = Math.floor(1000000 + (val / 100) * 350000);
+  const lineCount = Math.floor(1000000 + (layerNum / 100) * 350000);
   document.getElementById("toolpath-val").textContent = `Extrusion: Line #${lineCount}`;
 
   const term = document.getElementById("gcode-lines");
   term.innerHTML = `
-    ${lineCount - 2} G1 X${pt.x.toFixed(3)} Y${cutY.toFixed(3)} Z${pt.y.toFixed(3)} E.01488<br>
-    ${lineCount - 1} G1 X${(pt.x + 0.1).toFixed(3)} Y${cutY.toFixed(3)} Z${(pt.y + 0.1).toFixed(3)} E.01485<br>
-    ${lineCount} G1 X${(pt.x + 0.2).toFixed(3)} Y${cutY.toFixed(3)} Z${(pt.y + 0.2).toFixed(3)} E.01609
+    ${lineCount - 2} G1 X${bounds.centerX.toFixed(3)} Y${(bounds.minY + (layerNum / 100) * bounds.height).toFixed(3)} Z${bounds.centerZ.toFixed(3)} E.01488<br>
+    ${lineCount - 1} G1 X${(bounds.centerX + 0.1).toFixed(3)} Y${(bounds.minY + (layerNum / 100) * bounds.height).toFixed(3)} Z${(bounds.centerZ + 0.1).toFixed(3)} E.01485<br>
+    ${lineCount} G1 X${(bounds.centerX + 0.2).toFixed(3)} Y${(bounds.minY + (layerNum / 100) * bounds.height).toFixed(3)} Z${(bounds.centerZ + 0.2).toFixed(3)} E.01609
   `;
 }
 
