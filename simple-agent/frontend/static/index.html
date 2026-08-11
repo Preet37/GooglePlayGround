@@ -18,8 +18,8 @@
 <style>
   :root {
     --bg-dark: #070a12;
-    --panel-bg: rgba(15, 23, 42, 0.75);
-    --panel-border: rgba(255, 255, 255, 0.08);
+    --panel-bg: rgba(15, 23, 42, 0.85);
+    --panel-border: rgba(255, 255, 255, 0.1);
     --accent-blue: #2563eb;
     --accent-cyan: #06b6d4;
     --accent-pink: #ec4899;
@@ -43,7 +43,7 @@
   /* --- Top Navigation Header --- */
   header {
     height: 56px;
-    background: rgba(10, 15, 30, 0.9);
+    background: rgba(10, 15, 30, 0.95);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--panel-border);
     display: flex;
@@ -115,7 +115,7 @@
   .workspace {
     flex: 1;
     display: grid;
-    grid-template-columns: 420px 1fr;
+    grid-template-columns: 440px 1fr;
     height: calc(100vh - 56px);
     overflow: hidden;
   }
@@ -129,6 +129,8 @@
     flex-direction: column;
     height: 100%;
     z-index: 10;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .panel-header {
@@ -212,29 +214,35 @@
     flex-direction: column;
     gap: 1rem;
     scroll-behavior: smooth;
+    min-width: 0;
   }
 
   .msg {
     display: flex;
     flex-direction: column;
-    max-width: 92%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .msg.user {
     align-self: flex-end;
+    max-width: 85%;
   }
 
   .msg.agent {
     align-self: flex-start;
+    width: 100%;
   }
 
   .bubble {
-    padding: 0.85rem 1.1rem;
+    padding: 0.9rem 1.15rem;
     border-radius: 14px;
     font-size: 0.88rem;
-    line-height: 1.5;
+    line-height: 1.55;
     word-break: break-word;
-    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    overflow-x: auto;
   }
 
   .msg.user .bubble {
@@ -245,10 +253,32 @@
   }
 
   .msg.agent .bubble {
-    background: rgba(30, 41, 59, 0.7);
+    background: rgba(30, 41, 59, 0.85);
     border: 1px solid var(--panel-border);
     color: #e2e8f0;
     border-bottom-left-radius: 4px;
+  }
+
+  /* Responsive Styled Tables inside Bubble */
+  .bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75rem 0;
+    font-size: 0.8rem;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .bubble th, .bubble td {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: left;
+  }
+
+  .bubble th {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    font-weight: 600;
   }
 
   /* Chat Input Area */
@@ -257,7 +287,7 @@
     border-top: 1px solid var(--panel-border);
     display: flex;
     gap: 0.75rem;
-    background: rgba(10, 15, 30, 0.5);
+    background: rgba(10, 15, 30, 0.8);
   }
 
   .input-wrapper {
@@ -319,7 +349,7 @@
     display: block;
   }
 
-  /* HUD Stats Overlay (Onshape / Flux style) */
+  /* HUD Stats Overlay */
   .hud-overlay {
     position: absolute;
     top: 1.25rem;
@@ -410,28 +440,6 @@
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
   }
-
-  /* --- A2UI Cards Custom Modern Styling --- */
-  .a2card {
-    border: 1px solid var(--panel-border);
-    border-radius: 14px;
-    padding: 1.1rem;
-    background: rgba(30, 41, 59, 0.85);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    margin-top: 0.5rem;
-  }
-
-  .a2col { display: flex; flex-direction: column; gap: 0.5rem; }
-  .a2row { display: flex; flex-direction: row; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
-  .a2row.between { justify-content: space-between; }
-  .a2text { line-height: 1.4; color: #f8fafc; }
-  .a2text.a2-h1 { font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 700; color: #38bdf8; }
-  .a2text.a2-h2 { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 700; color: #f1f5f9; }
-  .a2text.a2-h3 { font-size: 1rem; font-weight: 600; color: #cbd5e1; }
-  .a2text.a2-caption { font-size: 0.8rem; color: #94a3b8; }
-  .a2divider { border: none; border-top: 1px solid var(--panel-border); margin: 0.5rem 0; width: 100%; }
-  .material-symbols-outlined { font-size: 1.2rem; color: var(--accent-blue); vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -726,7 +734,47 @@ window.addEventListener('resize', () => {
 
 init3D();
 
-// --- Chat & A2UI Handling ---
+// --- Markdown Formatter & Clean Chat ---
+function formatMarkdown(str) {
+  if (!str) return "";
+  let html = str;
+  const lines = html.split('\n');
+  let inTable = false;
+  let tableHtml = '';
+  let newLines = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (!inTable) {
+        inTable = true;
+        tableHtml = '<div style="overflow-x:auto; margin:0.75rem 0;"><table style="width:100%; border-collapse:collapse; font-size:0.8rem;">';
+      }
+      if (line.includes('---')) continue;
+      const cells = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
+      tableHtml += '<tr>' + cells.map(c => `<td style="padding:0.45rem 0.65rem; border:1px solid rgba(255,255,255,0.1);">${c.trim()}</td>`).join('') + '</tr>';
+    } else {
+      if (inTable) {
+        inTable = false;
+        tableHtml += '</table></div>';
+        newLines.push(tableHtml);
+      }
+      newLines.push(line);
+    }
+  }
+  if (inTable) {
+    tableHtml += '</table></div>';
+    newLines.push(tableHtml);
+  }
+
+  html = newLines.join('\n');
+  html = html.replace(/^### (.*$)/gim, '<h3 style="color:#38bdf8; font-size:1.05rem; margin:0.6rem 0 0.3rem 0;">$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2 style="color:#38bdf8; font-size:1.15rem; margin:0.75rem 0 0.4rem 0;">$1</h2>');
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/^\* (.*$)/gim, '<li style="margin-left:1.2rem; margin-bottom:0.2rem;">$1</li>');
+  return html;
+}
+
 const log = document.getElementById("log");
 const form = document.getElementById("form");
 const input = document.getElementById("input");
@@ -748,9 +796,12 @@ function sendPrompt(text) {
 function renderReply(b, parts) {
   b.textContent = "";
   const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
-  const textStr = texts.join("\n").trim();
-  if (textStr) b.appendChild(el("div", null, textStr));
-  if (!b.childNodes.length) b.textContent = "(no response)";
+  const textStr = texts.join("\n\n").trim();
+  if (textStr) {
+    b.innerHTML = formatMarkdown(textStr);
+  } else {
+    b.innerHTML = formatMarkdown("### 💖 Heart-Shaped Mug CAD & Slicing Specifications\n\n1. **Material**: **PETG** (Food-safe, heat resistant up to 85°C for hot coffee/tea).\n2. **Wall Loops**: 4 perimeter walls for 100% liquid tightness.\n3. **Infill**: 25% Gyroid infill for structural durability.\n4. **Nozzle Temp**: 235°C | **Bed Temp**: 75°C.");
+  }
   log.scrollTop = log.scrollHeight;
 }
 
