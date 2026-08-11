@@ -28,6 +28,20 @@
     --accent-glow: rgba(6, 182, 212, 0.4);
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
+    --header-bg: rgba(10, 15, 30, 0.96);
+    --bubble-agent: rgba(30, 41, 59, 0.95);
+    --input-bg: rgba(15, 23, 42, 0.9);
+  }
+
+  body.light-theme {
+    --bg-dark: #f8fafc;
+    --panel-bg: rgba(255, 255, 255, 0.96);
+    --panel-border: rgba(0, 0, 0, 0.12);
+    --text-main: #0f172a;
+    --text-muted: #475569;
+    --header-bg: rgba(241, 245, 249, 0.96);
+    --bubble-agent: rgba(241, 245, 249, 0.95);
+    --input-bg: rgba(255, 255, 255, 0.9);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,12 +54,13 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   /* --- Top Navigation Header --- */
   header {
     height: 58px;
-    background: rgba(10, 15, 30, 0.96);
+    background: var(--header-bg);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--panel-border);
     display: flex;
@@ -86,6 +101,26 @@
     gap: 0.75rem;
   }
 
+  .theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .theme-toggle-btn:hover {
+    background: rgba(56, 189, 248, 0.25);
+    transform: translateY(-1px);
+  }
+
   .pill {
     display: flex;
     align-items: center;
@@ -94,7 +129,7 @@
     border-radius: 999px;
     font-size: 0.75rem;
     font-weight: 500;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(128, 128, 128, 0.08);
     border: 1px solid var(--panel-border);
     color: var(--text-muted);
   }
@@ -102,15 +137,15 @@
   .pill.active {
     background: rgba(16, 185, 129, 0.12);
     border-color: rgba(16, 185, 129, 0.4);
-    color: #34d399;
+    color: #10b981;
   }
 
   .status-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: #34d399;
-    box-shadow: 0 0 8px #34d399;
+    background-color: #10b981;
+    box-shadow: 0 0 8px #10b981;
   }
 
   /* --- Split Studio Layout --- */
@@ -150,13 +185,13 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #f8fafc;
+    color: var(--text-main);
   }
 
   .clear-btn {
     font-size: 0.75rem;
-    color: #94a3b8;
-    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+    background: rgba(128, 128, 128, 0.08);
     border: 1px solid var(--panel-border);
     padding: 0.3rem 0.7rem;
     border-radius: 6px;
@@ -173,14 +208,14 @@
     gap: 0.5rem;
     overflow-x: auto;
     border-bottom: 1px solid var(--panel-border);
-    background: rgba(255,255,255,0.02);
+    background: rgba(128, 128, 128, 0.03);
   }
 
   .quick-prompts::-webkit-scrollbar {
     height: 4px;
   }
   .quick-prompts::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(128, 128, 128, 0.2);
     border-radius: 2px;
   }
 
@@ -188,11 +223,11 @@
     white-space: nowrap;
     padding: 0.4rem 0.85rem;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(128, 128, 128, 0.06);
     border: 1px solid var(--panel-border);
     font-size: 0.78rem;
     font-weight: 500;
-    color: #cbd5e1;
+    color: var(--text-main);
     cursor: pointer;
     transition: all 0.2s ease;
   }
@@ -200,7 +235,7 @@
   .chip:hover {
     background: rgba(56, 189, 248, 0.18);
     border-color: rgba(56, 189, 248, 0.5);
-    color: #38bdf8;
+    color: #0284c7;
     transform: translateY(-1px);
   }
 
@@ -220,7 +255,7 @@
     width: 6px;
   }
   #log::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(128, 128, 128, 0.2);
     border-radius: 3px;
   }
 
@@ -260,11 +295,11 @@
   }
 
   .msg.agent .bubble {
-    background: rgba(30, 41, 59, 0.95);
+    background: var(--bubble-agent);
     border: 1px solid var(--panel-border);
-    color: #e2e8f0;
+    color: var(--text-main);
     border-bottom-left-radius: 4px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   }
 
   .bubble table {
@@ -278,13 +313,13 @@
 
   .bubble th, .bubble td {
     padding: 0.55rem 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--panel-border);
     text-align: left;
   }
 
   .bubble th {
     background: rgba(56, 189, 248, 0.18);
-    color: #38bdf8;
+    color: #0284c7;
     font-weight: 600;
   }
 
@@ -294,7 +329,7 @@
     border-top: 1px solid var(--panel-border);
     display: flex;
     gap: 0.75rem;
-    background: rgba(10, 15, 30, 0.9);
+    background: var(--panel-bg);
   }
 
   .input-wrapper {
@@ -307,8 +342,8 @@
     padding: 0.85rem 1.1rem;
     border-radius: 12px;
     border: 1px solid var(--panel-border);
-    background: rgba(15, 23, 42, 0.9);
-    color: #fff;
+    background: var(--input-bg);
+    color: var(--text-main);
     font-family: inherit;
     font-size: 0.9rem;
     outline: none;
@@ -350,6 +385,10 @@
     overflow: hidden;
   }
 
+  body.light-theme .viewport-container {
+    background: radial-gradient(circle at 50% 50%, #f1f5f9 0%, #cbd5e1 100%);
+  }
+
   #webgl-canvas {
     width: 100%;
     height: 100%;
@@ -362,12 +401,12 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(15, 23, 42, 0.85);
+    background: var(--panel-bg);
     backdrop-filter: blur(16px);
     border: 1px solid rgba(56, 189, 248, 0.3);
     padding: 1.25rem 2rem;
     border-radius: 20px;
-    color: #cbd5e1;
+    color: var(--text-main);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -375,24 +414,24 @@
     font-family: 'Outfit', sans-serif;
     pointer-events: none;
     z-index: 15;
-    box-shadow: 0 12px 35px rgba(0,0,0,0.6);
+    box-shadow: 0 12px 35px rgba(0,0,0,0.3);
     transition: opacity 0.3s ease;
   }
 
   .empty-plate-badge .badge-icon {
     font-size: 2.5rem;
-    color: #38bdf8;
+    color: #0284c7;
   }
 
   .empty-plate-badge .badge-title {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #f8fafc;
+    color: var(--text-main);
   }
 
   .empty-plate-badge .badge-sub {
     font-size: 0.8rem;
-    color: #94a3b8;
+    color: var(--text-muted);
   }
 
   /* 5-Second Futuristic AI Generation Progress Card Overlay */
@@ -402,7 +441,7 @@
     left: 50%;
     transform: translate(-50%, -50%);
     width: 380px;
-    background: rgba(10, 15, 30, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(56, 189, 248, 0.4);
     border-radius: 20px;
@@ -411,13 +450,13 @@
     flex-direction: column;
     gap: 1rem;
     z-index: 30;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.2);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 25px rgba(56, 189, 248, 0.2);
     animation: loaderPulse 2s infinite ease-in-out;
   }
 
   @keyframes loaderPulse {
-    0%, 100% { border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(56, 189, 248, 0.2); }
-    50% { border-color: rgba(52, 211, 153, 0.6); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(52, 211, 153, 0.3); }
+    0%, 100% { border-color: rgba(56, 189, 248, 0.4); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(56, 189, 248, 0.2); }
+    50% { border-color: rgba(52, 211, 153, 0.6); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(52, 211, 153, 0.3); }
   }
 
   .loader-top-badge {
@@ -426,7 +465,7 @@
     border-radius: 6px;
     background: rgba(16, 185, 129, 0.2);
     border: 1px solid rgba(16, 185, 129, 0.5);
-    color: #34d399;
+    color: #10b981;
     font-size: 0.68rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -438,14 +477,14 @@
   .loader-title {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.82rem;
-    color: #38bdf8;
+    color: #0284c7;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   .loader-stage-text {
     font-size: 0.88rem;
-    color: #f8fafc;
+    color: var(--text-main);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -454,7 +493,7 @@
   .loader-progress-bar {
     width: 100%;
     height: 6px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(128, 128, 128, 0.2);
     border-radius: 3px;
     overflow: hidden;
   }
@@ -462,7 +501,7 @@
   .loader-progress-fill {
     width: 0%;
     height: 100%;
-    background: linear-gradient(90deg, #38bdf8, #34d399);
+    background: linear-gradient(90deg, #38bdf8, #10b981);
     border-radius: 3px;
     transition: width 0.3s ease;
   }
@@ -475,13 +514,13 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    background: rgba(15, 23, 42, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(16px);
     padding: 0.5rem;
     border-radius: 14px;
     border: 1px solid var(--panel-border);
     z-index: 20;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   }
 
   .tool-btn {
@@ -491,7 +530,7 @@
     border-radius: 10px;
     border: 1px solid transparent;
     background: transparent;
-    color: #94a3b8;
+    color: var(--text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -502,7 +541,7 @@
   .tool-btn:hover, .tool-btn.active {
     background: rgba(56, 189, 248, 0.25);
     border-color: rgba(56, 189, 248, 0.5);
-    color: #38bdf8;
+    color: #0284c7;
   }
 
   .tool-btn::after {
@@ -511,8 +550,8 @@
     left: 52px;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(15, 23, 42, 0.96);
-    color: #f8fafc;
+    background: var(--panel-bg);
+    color: var(--text-main);
     border: 1px solid var(--panel-border);
     padding: 0.4rem 0.75rem;
     border-radius: 8px;
@@ -523,7 +562,7 @@
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
   }
 
   .tool-btn:hover::after {
@@ -536,14 +575,14 @@
     position: absolute;
     top: 1.25rem;
     left: 5rem;
-    background: rgba(15, 23, 42, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
     border-radius: 14px;
     padding: 0.85rem 1.1rem;
     width: 250px;
     z-index: 20;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   }
 
   .legend-header {
@@ -575,7 +614,7 @@
     display: flex;
     align-items: center;
     gap: 0.55rem;
-    color: #cbd5e1;
+    color: var(--text-main);
   }
 
   .legend-color {
@@ -603,14 +642,14 @@
   }
 
   .hud-card {
-    background: rgba(15, 23, 42, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
     border-radius: 16px;
     padding: 1.1rem 1.35rem;
     width: 280px;
     pointer-events: auto;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   }
 
   .hud-header {
@@ -644,7 +683,7 @@
   .stat-value {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #38bdf8;
+    color: #0284c7;
     font-family: 'Outfit', sans-serif;
   }
 
@@ -655,7 +694,7 @@
     top: 200px;
     bottom: 5.5rem;
     width: 44px;
-    background: rgba(15, 23, 42, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
     border-radius: 14px;
@@ -682,7 +721,7 @@
     bottom: 1.5rem;
     left: 18.5rem;
     right: 18.5rem;
-    background: rgba(15, 23, 42, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
     border-radius: 14px;
@@ -691,7 +730,7 @@
     align-items: center;
     gap: 1rem;
     z-index: 20;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   }
 
   .toolpath-slider {
@@ -707,16 +746,16 @@
     left: 1.25rem;
     width: 260px;
     height: 115px;
-    background: rgba(8, 12, 24, 0.96);
+    background: var(--panel-bg);
     border: 1px solid var(--panel-border);
     border-radius: 12px;
     padding: 0.6rem 0.85rem;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.7rem;
-    color: #f59e0b;
+    color: #d97706;
     overflow-y: auto;
     z-index: 20;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
   }
 
   /* Export G-Code Action Button */
@@ -754,13 +793,13 @@
     transform: translateX(-50%);
     display: flex;
     gap: 0.5rem;
-    background: rgba(15, 23, 42, 0.94);
+    background: var(--panel-bg);
     backdrop-filter: blur(16px);
     padding: 0.45rem;
     border-radius: 14px;
     border: 1px solid var(--panel-border);
     z-index: 20;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   }
 
   .control-btn {
@@ -769,7 +808,7 @@
     border-radius: 10px;
     border: none;
     background: transparent;
-    color: #cbd5e1;
+    color: var(--text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -779,7 +818,7 @@
 
   .control-btn:hover, .control-btn.active {
     background: rgba(56, 189, 248, 0.25);
-    color: #38bdf8;
+    color: #0284c7;
   }
 </style>
 </head>
@@ -792,6 +831,10 @@
     <span>PrintCraft 3D Studio</span>
   </div>
   <div class="status-pills">
+    <button class="theme-toggle-btn" onclick="toggleTheme()">
+      <span class="material-symbols-outlined" id="theme-icon" style="font-size:1rem;">dark_mode</span>
+      <span id="theme-text">Dark</span>
+    </button>
     <div class="pill active">
       <div class="status-dot"></div>
       Gemini 2.5 Copilot
@@ -873,7 +916,7 @@
       </div>
       <div class="loader-title" id="loader-title">BUILDING · TARGET OBJECT</div>
       <div class="loader-stage-text" id="loader-stage">
-        <span class="material-symbols-outlined" style="color:#34d399; font-size:1.1rem;">science</span>
+        <span class="material-symbols-outlined" style="color:#10b981; font-size:1.1rem;">science</span>
         <span id="stage-msg">Researching real specifications...</span>
       </div>
       <div class="loader-progress-bar">
@@ -933,12 +976,12 @@
     <div class="toolpath-slider-container">
       <span class="material-symbols-outlined" style="font-size:1.15rem; color:#06b6d4;">precision_manufacturing</span>
       <input type="range" class="toolpath-slider" id="toolpath-range" min="0" max="100" value="100" oninput="updateToolpathScrub(this.value)">
-      <span style="font-size:0.75rem; font-family:'JetBrains Mono', monospace; color:#38bdf8;" id="toolpath-val">Extrusion: --</span>
+      <span style="font-size:0.75rem; font-family:'JetBrains Mono', monospace; color:#0284c7;" id="toolpath-val">Extrusion: --</span>
     </div>
 
     <!-- Live G-Code Terminal Window -->
     <div class="gcode-terminal" id="gcode-term">
-      <div style="color:#94a3b8; font-size:0.62rem; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:0.3rem;">G-CODE TOOLPATH STREAM</div>
+      <div style="color:var(--text-muted); font-size:0.62rem; border-bottom:1px solid var(--panel-border); margin-bottom:0.3rem;">G-CODE TOOLPATH STREAM</div>
       <div id="gcode-lines">
         System initialized.<br>
         Awaiting 3D CAD prompt...
@@ -950,7 +993,7 @@
       <div class="hud-card">
         <div class="hud-header">
           <span>Active Mesh Telemetry</span>
-          <span class="material-symbols-outlined" style="font-size:1rem; color:#38bdf8;">analytics</span>
+          <span class="material-symbols-outlined" style="font-size:1rem; color:#0284c7;">analytics</span>
         </div>
         <div class="hud-grid">
           <div class="stat-item">
@@ -994,14 +1037,38 @@ let isRotating = false;
 let isSliceView = false;
 let hasSupports = false;
 let isGenerating = false;
+let currentTheme = localStorage.getItem('printcraft_theme') || 'dark';
 let modelHeight = 50;
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  localStorage.setItem('printcraft_theme', theme);
+  const icon = document.getElementById("theme-icon");
+  const text = document.getElementById("theme-text");
+
+  if (theme === 'light') {
+    document.body.classList.add('light-theme');
+    if (icon) icon.textContent = "light_mode";
+    if (text) text.textContent = "Light";
+    if (scene) scene.background = new THREE.Color(0xf1f5f9);
+  } else {
+    document.body.classList.remove('light-theme');
+    if (icon) icon.textContent = "dark_mode";
+    if (text) text.textContent = "Dark";
+    if (scene) scene.background = new THREE.Color(0x0a0f1d);
+  }
+}
+
+function toggleTheme() {
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+}
 
 function init3D() {
   const container = document.querySelector('.viewport-container');
   const canvas = document.getElementById('webgl-canvas');
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0f1d);
+  scene.background = new THREE.Color(currentTheme === 'light' ? 0xf1f5f9 : 0x0a0f1d);
 
   camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
   camera.position.set(120, 100, 140);
@@ -1026,7 +1093,7 @@ function init3D() {
   });
   scene.add(transformControls);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
   scene.add(ambientLight);
 
   const dirLight1 = new THREE.DirectionalLight(0x38bdf8, 1.2);
@@ -1040,6 +1107,7 @@ function init3D() {
   createPEIBuildPlate();
   create3DNozzle();
   createHoloWireframeSphere();
+  applyTheme(currentTheme);
   animate();
 }
 
@@ -1051,7 +1119,7 @@ function createPEIBuildPlate() {
   plateMesh.position.y = -2;
   plateGroup.add(plateMesh);
 
-  const grid = new THREE.GridHelper(220, 22, 0x38bdf8, 0x475569);
+  const grid = new THREE.GridHelper(220, 22, 0x0284c7, 0x64748b);
   grid.position.y = 0.1;
   plateGroup.add(grid);
 
@@ -1079,7 +1147,7 @@ function create3DNozzle() {
 
 function createHoloWireframeSphere() {
   const geom = new THREE.IcosahedronGeometry(40, 2);
-  const mat = new THREE.MeshBasicMaterial({ color: 0x34d399, wireframe: true, transparent: true, opacity: 0.35 });
+  const mat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.35 });
   holoSphere = new THREE.Mesh(geom, mat);
   holoSphere.position.set(0, 40, 0);
   holoSphere.visible = false;
@@ -1622,7 +1690,7 @@ function formatMarkdown(str) {
       }
       if (line.includes('---')) continue;
       const cells = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-      tableHtml += '<tr>' + cells.map(c => `<td style="padding:0.45rem 0.65rem; border:1px solid rgba(255,255,255,0.12);">${c.trim()}</td>`).join('') + '</tr>';
+      tableHtml += '<tr>' + cells.map(c => `<td style="padding:0.45rem 0.65rem; border:1px solid var(--panel-border);">${c.trim()}</td>`).join('') + '</tr>';
     } else {
       if (inTable) {
         inTable = false;
@@ -1638,9 +1706,9 @@ function formatMarkdown(str) {
   }
 
   html = newLines.join('\n');
-  html = html.replace(/^#### (.*$)/gim, '<h4 style="color:#38bdf8; font-size:0.95rem; margin:0.5rem 0 0.25rem 0;">$1</h4>');
-  html = html.replace(/^### (.*$)/gim, '<h3 style="color:#38bdf8; font-size:1.05rem; margin:0.6rem 0 0.3rem 0;">$1</h3>');
-  html = html.replace(/^## (.*$)/gim, '<h2 style="color:#38bdf8; font-size:1.15rem; margin:0.75rem 0 0.4rem 0;">$1</h2>');
+  html = html.replace(/^#### (.*$)/gim, '<h4 style="color:#0284c7; font-size:0.95rem; margin:0.5rem 0 0.25rem 0;">$1</h4>');
+  html = html.replace(/^### (.*$)/gim, '<h3 style="color:#0284c7; font-size:1.05rem; margin:0.6rem 0 0.3rem 0;">$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2 style="color:#0284c7; font-size:1.15rem; margin:0.75rem 0 0.4rem 0;">$1</h2>');
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/^\* (.*$)/gim, '<li style="margin-left:1.2rem; margin-bottom:0.2rem;">$1</li>');
   return html;
