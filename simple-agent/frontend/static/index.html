@@ -11,19 +11,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-<!-- Three.js & OrbitControls from CDN -->
+<!-- Three.js, OrbitControls, TransformControls & GLTFLoader from CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <style>
   :root {
-    --bg-dark: #070a12;
-    --panel-bg: rgba(15, 23, 42, 0.92);
-    --panel-border: rgba(255, 255, 255, 0.1);
+    --bg-dark: #030712;
+    --panel-bg: rgba(15, 23, 42, 0.94);
+    --panel-border: rgba(255, 255, 255, 0.12);
     --accent-blue: #2563eb;
     --accent-cyan: #06b6d4;
     --accent-pink: #ec4899;
-    --accent-glow: rgba(37, 99, 235, 0.35);
+    --accent-orange: #f97316;
+    --accent-glow: rgba(6, 182, 212, 0.4);
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
   }
@@ -42,9 +45,9 @@
 
   /* --- Top Navigation Header --- */
   header {
-    height: 56px;
-    background: rgba(10, 15, 30, 0.95);
-    backdrop-filter: blur(12px);
+    height: 58px;
+    background: rgba(10, 15, 30, 0.96);
+    backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--panel-border);
     display: flex;
     align-items: center;
@@ -58,24 +61,24 @@
     align-items: center;
     gap: 0.75rem;
     font-family: 'Outfit', sans-serif;
-    font-weight: 700;
-    font-size: 1.25rem;
+    font-weight: 800;
+    font-size: 1.3rem;
     background: linear-gradient(135deg, #38bdf8, #818cf8, #f43f5e);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
   .brand-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
     background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 1.1rem;
-    box-shadow: 0 0 12px var(--accent-glow);
+    font-size: 1.15rem;
+    box-shadow: 0 0 16px var(--accent-glow);
   }
 
   .status-pills {
@@ -88,7 +91,7 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.25rem 0.75rem;
+    padding: 0.3rem 0.85rem;
     border-radius: 999px;
     font-size: 0.75rem;
     font-weight: 500;
@@ -98,8 +101,8 @@
   }
 
   .pill.active {
-    background: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.4);
     color: #34d399;
   }
 
@@ -115,15 +118,15 @@
   .workspace {
     flex: 1;
     display: grid;
-    grid-template-columns: 440px 1fr;
-    height: calc(100vh - 56px);
+    grid-template-columns: 460px 1fr;
+    height: calc(100vh - 58px);
     overflow: hidden;
   }
 
   /* --- Left Sidebar: Copilot Chat --- */
   .copilot-panel {
     background: var(--panel-bg);
-    backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
     border-right: 1px solid var(--panel-border);
     display: flex;
     flex-direction: column;
@@ -134,7 +137,7 @@
   }
 
   .panel-header {
-    padding: 0.85rem 1.25rem;
+    padding: 0.9rem 1.25rem;
     border-bottom: 1px solid var(--panel-border);
     display: flex;
     align-items: center;
@@ -143,12 +146,12 @@
 
   .panel-title {
     font-family: 'Outfit', sans-serif;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.05rem;
+    font-weight: 700;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #e2e8f0;
+    color: #f8fafc;
   }
 
   .clear-btn {
@@ -156,12 +159,13 @@
     color: #94a3b8;
     background: rgba(255,255,255,0.05);
     border: 1px solid var(--panel-border);
-    padding: 0.25rem 0.6rem;
+    padding: 0.3rem 0.7rem;
     border-radius: 6px;
     cursor: pointer;
+    transition: all 0.2s ease;
   }
 
-  .clear-btn:hover { color: #f43f5e; border-color: #f43f5e; }
+  .clear-btn:hover { color: #f43f5e; border-color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
 
   .topic-bar {
     padding: 0.75rem 1.25rem;
@@ -174,16 +178,17 @@
 
   .topic-input {
     flex: 1;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.06);
     border: 1px solid var(--panel-border);
     border-radius: 8px;
-    padding: 0.45rem 0.75rem;
+    padding: 0.5rem 0.75rem;
     color: #fff;
     font-size: 0.85rem;
     outline: none;
+    transition: all 0.2s ease;
   }
 
-  .topic-input:focus { border-color: #38bdf8; }
+  .topic-input:focus { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.25); }
 
   /* Quick Prompts Chips */
   .quick-prompts {
@@ -199,20 +204,22 @@
 
   .chip {
     white-space: nowrap;
-    padding: 0.35rem 0.75rem;
+    padding: 0.4rem 0.85rem;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--panel-border);
-    font-size: 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 500;
     color: #cbd5e1;
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .chip:hover {
-    background: rgba(56, 189, 248, 0.15);
-    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.18);
+    border-color: rgba(56, 189, 248, 0.5);
     color: #38bdf8;
+    transform: translateY(-1px);
   }
 
   /* Chat Messages Container */
@@ -222,9 +229,17 @@
     padding: 1.25rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.1rem;
     scroll-behavior: smooth;
     min-width: 0;
+  }
+
+  #log::-webkit-scrollbar {
+    width: 6px;
+  }
+  #log::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
   }
 
   .msg {
@@ -236,7 +251,7 @@
 
   .msg.user {
     align-self: flex-end;
-    max-width: 85%;
+    max-width: 88%;
   }
 
   .msg.agent {
@@ -245,10 +260,10 @@
   }
 
   .bubble {
-    padding: 0.9rem 1.15rem;
+    padding: 1rem 1.25rem;
     border-radius: 14px;
     font-size: 0.88rem;
-    line-height: 1.55;
+    line-height: 1.6;
     word-break: break-word;
     overflow-wrap: break-word;
     max-width: 100%;
@@ -259,17 +274,17 @@
     background: linear-gradient(135deg, var(--accent-blue), #1d4ed8);
     color: #fff;
     border-bottom-right-radius: 4px;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
   }
 
   .msg.agent .bubble {
-    background: rgba(30, 41, 59, 0.9);
+    background: rgba(30, 41, 59, 0.95);
     border: 1px solid var(--panel-border);
     color: #e2e8f0;
     border-bottom-left-radius: 4px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   }
 
-  /* Responsive Tables inside Chat Bubble */
   .bubble table {
     width: 100%;
     border-collapse: collapse;
@@ -280,13 +295,13 @@
   }
 
   .bubble th, .bubble td {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.55rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     text-align: left;
   }
 
   .bubble th {
-    background: rgba(56, 189, 248, 0.15);
+    background: rgba(56, 189, 248, 0.18);
     color: #38bdf8;
     font-weight: 600;
   }
@@ -297,7 +312,7 @@
     border-top: 1px solid var(--panel-border);
     display: flex;
     gap: 0.75rem;
-    background: rgba(10, 15, 30, 0.8);
+    background: rgba(10, 15, 30, 0.9);
   }
 
   .input-wrapper {
@@ -307,41 +322,41 @@
 
   #input {
     width: 100%;
-    padding: 0.8rem 1rem;
+    padding: 0.85rem 1.1rem;
     border-radius: 12px;
     border: 1px solid var(--panel-border);
-    background: rgba(15, 23, 42, 0.8);
+    background: rgba(15, 23, 42, 0.9);
     color: #fff;
     font-family: inherit;
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     outline: none;
     transition: all 0.2s ease;
   }
 
   #input:focus {
     border-color: var(--accent-cyan);
-    box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 14px rgba(6, 182, 212, 0.25);
   }
 
   button[type="submit"] {
-    padding: 0.8rem 1.25rem;
+    padding: 0.85rem 1.35rem;
     border-radius: 12px;
     border: none;
     background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
     color: #fff;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    box-shadow: 0 4px 12px var(--accent-glow);
+    box-shadow: 0 4px 15px var(--accent-glow);
   }
 
   button[type="submit"]:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(6, 182, 212, 0.35);
+    box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
   }
 
   /* --- Right Studio Canvas: Interactive 3D WebGL Viewport --- */
@@ -367,19 +382,20 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(12px);
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
     padding: 0.5rem;
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid var(--panel-border);
     z-index: 20;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
 
   .tool-btn {
     position: relative;
-    width: 38px;
-    height: 38px;
-    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
     border: 1px solid transparent;
     background: transparent;
     color: #94a3b8;
@@ -391,30 +407,30 @@
   }
 
   .tool-btn:hover, .tool-btn.active {
-    background: rgba(56, 189, 248, 0.2);
-    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(56, 189, 248, 0.25);
+    border-color: rgba(56, 189, 248, 0.5);
     color: #38bdf8;
   }
 
-  /* Hover Tooltip Popup */
   .tool-btn::after {
     content: attr(data-tooltip);
     position: absolute;
-    left: 48px;
+    left: 52px;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(15, 23, 42, 0.96);
     color: #f8fafc;
     border: 1px solid var(--panel-border);
-    padding: 0.35rem 0.65rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 500;
     white-space: nowrap;
     pointer-events: none;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
   }
 
   .tool-btn:hover::after {
@@ -422,19 +438,19 @@
     visibility: visible;
   }
 
-  /* Prusa Slicer Feature Type Legend Card (Top Left) */
+  /* Prusa Slicer Feature Type Color Legend Card (Top Left) */
   .legend-card {
     position: absolute;
     top: 1.25rem;
-    left: 4.5rem;
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(12px);
+    left: 5rem;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    padding: 0.75rem 1rem;
+    border-radius: 14px;
+    padding: 0.85rem 1.1rem;
     width: 250px;
     z-index: 20;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
 
   .legend-header {
@@ -443,7 +459,7 @@
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.6rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -452,8 +468,8 @@
   .legend-grid {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    font-size: 0.75rem;
+    gap: 0.4rem;
+    font-size: 0.78rem;
   }
 
   .legend-item {
@@ -465,7 +481,7 @@
   .legend-label {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.55rem;
     color: #cbd5e1;
   }
 
@@ -478,7 +494,7 @@
   .legend-val {
     color: var(--text-muted);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
   }
 
   /* HUD Stats Overlay */
@@ -494,14 +510,14 @@
   }
 
   .hud-card {
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(12px);
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
-    border-radius: 14px;
-    padding: 1rem 1.25rem;
-    width: 270px;
+    border-radius: 16px;
+    padding: 1.1rem 1.35rem;
+    width: 280px;
     pointer-events: auto;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
 
   .hud-header {
@@ -510,7 +526,7 @@
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.85rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -519,7 +535,7 @@
   .hud-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    gap: 0.85rem;
   }
 
   .stat-item {
@@ -533,7 +549,7 @@
   }
 
   .stat-value {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: #38bdf8;
     font-family: 'Outfit', sans-serif;
@@ -543,14 +559,14 @@
   .layer-slider-container {
     position: absolute;
     right: 1.25rem;
-    top: 190px;
+    top: 200px;
     bottom: 5.5rem;
-    width: 42px;
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(12px);
+    width: 44px;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    padding: 0.75rem 0;
+    border-radius: 14px;
+    padding: 0.85rem 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -567,21 +583,22 @@
     accent-color: #f97316;
   }
 
-  /* Horizontal Extrusion Scrub Bar (Bottom Toolpath Scrub) */
+  /* Horizontal Extrusion Scrub Bar */
   .toolpath-slider-container {
     position: absolute;
     bottom: 1.5rem;
-    left: 18rem;
-    right: 18rem;
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(12px);
+    left: 18.5rem;
+    right: 18.5rem;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
     border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    padding: 0.5rem 1rem;
+    border-radius: 14px;
+    padding: 0.6rem 1.25rem;
     display: flex;
     align-items: center;
     gap: 1rem;
     z-index: 20;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
 
   .toolpath-slider {
@@ -590,26 +607,26 @@
     accent-color: #06b6d4;
   }
 
-  /* Live G-Code Terminal Window (Bottom Left) */
+  /* Live G-Code Terminal Window */
   .gcode-terminal {
     position: absolute;
     bottom: 1.5rem;
     left: 1.25rem;
-    width: 250px;
-    height: 110px;
-    background: rgba(10, 15, 30, 0.95);
+    width: 260px;
+    height: 115px;
+    background: rgba(8, 12, 24, 0.96);
     border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    padding: 0.6rem 0.85rem;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.68rem;
+    font-size: 0.7rem;
     color: #f59e0b;
     overflow-y: auto;
     z-index: 20;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
   }
 
-  /* Export G-Code Action Button (Bottom Right) */
+  /* Export G-Code Action Button */
   .export-gcode-btn {
     position: absolute;
     bottom: 1.5rem;
@@ -617,23 +634,23 @@
     background: linear-gradient(135deg, #f97316, #ea580c);
     color: #fff;
     border: none;
-    border-radius: 10px;
-    padding: 0.65rem 1.25rem;
+    border-radius: 12px;
+    padding: 0.7rem 1.35rem;
     font-family: 'Outfit', sans-serif;
     font-weight: 700;
-    font-size: 0.88rem;
+    font-size: 0.9rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     z-index: 20;
-    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+    box-shadow: 0 4px 18px rgba(249, 115, 22, 0.45);
     transition: all 0.2s ease;
   }
 
   .export-gcode-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(249, 115, 22, 0.6);
+    box-shadow: 0 6px 22px rgba(249, 115, 22, 0.65);
   }
 
   /* Floating Viewport Controls */
@@ -644,18 +661,19 @@
     transform: translateX(-50%);
     display: flex;
     gap: 0.5rem;
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(12px);
-    padding: 0.4rem;
-    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(16px);
+    padding: 0.45rem;
+    border-radius: 14px;
     border: 1px solid var(--panel-border);
     z-index: 20;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }
 
   .control-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
     border: none;
     background: transparent;
     color: #cbd5e1;
@@ -667,7 +685,7 @@
   }
 
   .control-btn:hover, .control-btn.active {
-    background: rgba(56, 189, 248, 0.2);
+    background: rgba(56, 189, 248, 0.25);
     color: #38bdf8;
   }
 </style>
@@ -733,7 +751,7 @@
       </div>
       <button type="submit">
         <span>Send</span>
-        <span class="material-symbols-outlined" style="font-size:1.1rem;">send</span>
+        <span class="material-symbols-outlined" style="font-size:1.15rem;">send</span>
       </button>
     </form>
   </div>
@@ -742,11 +760,11 @@
   <div class="viewport-container">
     <canvas id="webgl-canvas"></canvas>
 
-    <!-- Left Vertical Slicer Toolbar with Hover Tooltips -->
+    <!-- Left Vertical Slicer Toolbar with Interactive Transform Controls -->
     <div class="slicer-toolbar">
-      <button class="tool-btn active" id="tool-move" data-tooltip="Move Object [M]" onclick="selectTool('move')"><span class="material-symbols-outlined">open_with</span></button>
-      <button class="tool-btn" id="tool-rotate" data-tooltip="Rotate Object [R]" onclick="selectTool('rotate')"><span class="material-symbols-outlined">3d_rotation</span></button>
-      <button class="tool-btn" id="tool-scale" data-tooltip="Scale Object [S]" onclick="selectTool('scale')"><span class="material-symbols-outlined">aspect_ratio</span></button>
+      <button class="tool-btn active" id="tool-move" data-tooltip="Move Gizmo [M]" onclick="selectTool('move')"><span class="material-symbols-outlined">open_with</span></button>
+      <button class="tool-btn" id="tool-rotate" data-tooltip="Rotate Gizmo [R]" onclick="selectTool('rotate')"><span class="material-symbols-outlined">3d_rotation</span></button>
+      <button class="tool-btn" id="tool-scale" data-tooltip="Scale Gizmo [S]" onclick="selectTool('scale')"><span class="material-symbols-outlined">aspect_ratio</span></button>
       <button class="tool-btn" id="tool-flat" data-tooltip="Place Flat on Face [F]" onclick="selectTool('flat')"><span class="material-symbols-outlined">flip_to_back</span></button>
       <button class="tool-btn" id="slice-preview-btn" data-tooltip="G-Code Layer Slice Preview [L]" onclick="toggleSlicePreview()">
         <span class="material-symbols-outlined" style="color:#f97316;">layers</span>
@@ -758,7 +776,7 @@
     <div class="legend-card" id="legend-card">
       <div class="legend-header">
         <span>Feature Type</span>
-        <span class="material-symbols-outlined" style="font-size:0.9rem; color:#f97316;">palette</span>
+        <span class="material-symbols-outlined" style="font-size:0.95rem; color:#f97316;">palette</span>
       </div>
       <div class="legend-grid">
         <div class="legend-item"><div class="legend-label"><div class="legend-color" style="background:#eab308;"></div><span>Perimeter</span></div><span class="legend-val">13.2%</span></div>
@@ -785,21 +803,21 @@
 
     <!-- Vertical Layer Slice Height Scrub Bar -->
     <div class="layer-slider-container">
-      <span class="material-symbols-outlined" style="font-size:0.9rem; color:#f97316;">unfold_more</span>
+      <span class="material-symbols-outlined" style="font-size:0.95rem; color:#f97316;">unfold_more</span>
       <input type="range" class="layer-slider" id="layer-range" min="1" max="100" value="100" oninput="updateLayerCut(this.value)">
-      <span class="material-symbols-outlined" style="font-size:0.9rem; color:#94a3b8;">unfold_less</span>
+      <span class="material-symbols-outlined" style="font-size:0.95rem; color:#94a3b8;">unfold_less</span>
     </div>
 
     <!-- Horizontal Extrusion Toolpath Scrub Bar -->
     <div class="toolpath-slider-container">
-      <span class="material-symbols-outlined" style="font-size:1.1rem; color:#06b6d4;">precision_manufacturing</span>
+      <span class="material-symbols-outlined" style="font-size:1.15rem; color:#06b6d4;">precision_manufacturing</span>
       <input type="range" class="toolpath-slider" id="toolpath-range" min="0" max="100" value="100" oninput="updateToolpathScrub(this.value)">
       <span style="font-size:0.75rem; font-family:'JetBrains Mono', monospace; color:#38bdf8;" id="toolpath-val">Extrusion: 1278386</span>
     </div>
 
     <!-- Live G-Code Terminal Stream -->
     <div class="gcode-terminal" id="gcode-term">
-      <div style="color:#94a3b8; font-size:0.6rem; border-bottom:1px solid rgba(255,255,255,0.1); margin-bottom:0.25rem;">G-CODE TOOLPATH STREAM</div>
+      <div style="color:#94a3b8; font-size:0.62rem; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:0.3rem;">G-CODE TOOLPATH STREAM</div>
       <div id="gcode-lines">
         1278183 G1 X121.943 Y107.691 E.01488<br>
         1278184 G1 X122.379 Y107.643 E.01485<br>
@@ -847,11 +865,11 @@
 
 </div>
 
-<!-- Interactive Three.js Script -->
+<!-- Interactive Three.js Engine Script -->
 <script>
-let scene, camera, renderer, controls, meshGroup, infillGroup, supportGroup, nozzleMesh;
+let scene, camera, renderer, controls, transformControls, meshGroup, infillGroup, supportGroup, nozzleMesh;
 let clippingPlane;
-let currentModel = 'mug';
+let currentModel = 'mug'; // 'mug', 'rocket', 'turbine'
 let isWireframe = false;
 let isRotating = false;
 let isSliceView = false;
@@ -863,7 +881,7 @@ function init3D() {
   const canvas = document.getElementById('webgl-canvas');
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0f172a);
+  scene.background = new THREE.Color(0x0a0f1d);
 
   camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
   camera.position.set(120, 100, 140);
@@ -880,7 +898,16 @@ function init3D() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+  // Add 3D Transform Controls (Interactive On-Screen Gizmo!)
+  transformControls = new THREE.TransformControls(camera, renderer.domElement);
+  transformControls.size = 0.8;
+  transformControls.addEventListener('change', () => renderer.render(scene, camera));
+  transformControls.addEventListener('dragging-changed', (event) => {
+    controls.enabled = !event.value;
+  });
+  scene.add(transformControls);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
   scene.add(ambientLight);
 
   const dirLight1 = new THREE.DirectionalLight(0x38bdf8, 1.2);
@@ -919,16 +946,16 @@ function createPEIBuildPlate() {
 
 function create3DNozzle() {
   nozzleMesh = new THREE.Group();
-  const tipGeom = new THREE.ConeGeometry(3, 8, 16);
-  const brassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8, roughness: 0.2 });
+  const tipGeom = new THREE.ConeGeometry(3.5, 9, 16);
+  const brassMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85, roughness: 0.2 });
   const tip = new THREE.Mesh(tipGeom, brassMat);
   tip.rotation.x = Math.PI;
   nozzleMesh.add(tip);
 
-  const blockGeom = new THREE.BoxGeometry(10, 8, 10);
+  const blockGeom = new THREE.BoxGeometry(12, 9, 12);
   const blockMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.1 });
   const block = new THREE.Mesh(blockGeom, blockMat);
-  block.position.y = 8;
+  block.position.y = 9;
   nozzleMesh.add(block);
 
   nozzleMesh.position.set(0, 50, 0);
@@ -945,22 +972,17 @@ function selectTool(tool) {
   document.querySelectorAll('.slicer-toolbar .tool-btn').forEach(btn => {
     if (btn.id !== 'slice-preview-btn' && btn.id !== 'tool-support') btn.classList.remove('active');
   });
-  document.getElementById(`tool-${tool}`)?.classList.add('active');
 
   if (!meshGroup) return;
-  if (tool === 'move') {
-    meshGroup.position.x += 10;
-    if (meshGroup.position.x > 40) meshGroup.position.x = -40;
-  } else if (tool === 'rotate') {
-    meshGroup.rotation.y += Math.PI / 4;
-  } else if (tool === 'scale') {
-    const currentScale = meshGroup.scale.x;
-    const newScale = currentScale > 1.3 ? 1.0 : currentScale + 0.15;
-    meshGroup.scale.set(newScale, newScale, newScale);
-    snapToBed(meshGroup);
+
+  if (tool === 'move' || tool === 'rotate' || tool === 'scale') {
+    document.getElementById(`tool-${tool}`)?.classList.add('active');
+    transformControls.attach(meshGroup);
+    transformControls.setMode(tool === 'move' ? 'translate' : tool);
   } else if (tool === 'flat') {
+    document.getElementById('tool-flat')?.classList.add('active');
+    transformControls.detach();
     meshGroup.rotation.set(0, 0, 0);
-    meshGroup.scale.set(1, 1, 1);
     meshGroup.position.set(0, 0, 0);
     snapToBed(meshGroup);
   }
@@ -1004,13 +1026,17 @@ function createInfillLattice(bbox) {
   scene.add(infillGroup);
 }
 
+// Seamless Solid Heart-Shaped Mug CAD Generator
 function createHeartMugMesh() {
-  if (meshGroup) scene.remove(meshGroup);
+  if (meshGroup) {
+    transformControls.detach();
+    scene.remove(meshGroup);
+  }
   currentModel = 'mug';
 
   meshGroup = new THREE.Group();
 
-  // True Hollow Heart Shape with Open Top Rim
+  // Outer Parametric Heart Shape
   const outerHeart = new THREE.Shape();
   const x = 0, y = 0;
   outerHeart.moveTo(x, y + 8);
@@ -1021,6 +1047,7 @@ function createHeartMugMesh() {
   outerHeart.bezierCurveTo(x + 38, y + 22, x + 38, y, x + 22, y);
   outerHeart.bezierCurveTo(x + 5, y, x, y + 8, x, y + 8);
 
+  // Inner Hollow Path for Mug Cavity
   const innerPath = new THREE.Path();
   innerPath.moveTo(x, y + 7);
   innerPath.bezierCurveTo(x + 4, y + 2, x + 18, y + 2, x + 18, y + 2);
@@ -1031,14 +1058,14 @@ function createHeartMugMesh() {
   innerPath.bezierCurveTo(x - 4, y + 2, x, y + 7, x, y + 7);
   outerHeart.holes.push(innerPath);
 
-  const extrudeWall = { depth: 42, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 1.5, bevelThickness: 1.5 };
+  const extrudeWall = { depth: 44, bevelEnabled: true, bevelSegments: 4, steps: 1, bevelSize: 1.8, bevelThickness: 1.8 };
   const wallGeom = new THREE.ExtrudeGeometry(outerHeart, extrudeWall);
   wallGeom.center();
 
   const mugMat = new THREE.MeshStandardMaterial({
     color: isSliceView ? 0xf97316 : 0xf472b6,
-    roughness: isSliceView ? 0.6 : 0.25,
-    metalness: 0.1,
+    roughness: isSliceView ? 0.6 : 0.2,
+    metalness: 0.15,
     wireframe: isWireframe,
     clippingPlanes: [clippingPlane]
   });
@@ -1057,18 +1084,23 @@ function createHeartMugMesh() {
   baseHeart.bezierCurveTo(x + 38, y + 22, x + 38, y, x + 22, y);
   baseHeart.bezierCurveTo(x + 5, y, x, y + 8, x, y + 8);
 
-  const baseGeom = new THREE.ExtrudeGeometry(baseHeart, { depth: 5, bevelEnabled: false });
+  const baseGeom = new THREE.ExtrudeGeometry(baseHeart, { depth: 6, bevelEnabled: false });
   baseGeom.center();
   const baseMesh = new THREE.Mesh(baseGeom, mugMat);
   baseMesh.rotation.x = -Math.PI / 2;
-  baseMesh.position.y = -18.5;
+  baseMesh.position.y = -19;
   meshGroup.add(baseMesh);
 
-  // Heart Loop Handle Positioned Cleanly OUTSIDE Outer Wall Boundary (No Penetration into Interior!)
-  const handleTube = new THREE.TorusGeometry(14, 3.5, 16, 32, Math.PI * 1.1);
-  const handleMesh = new THREE.Mesh(handleTube, mugMat);
-  handleMesh.position.set(42, 0, 0);
-  handleMesh.rotation.z = -Math.PI / 6;
+  // Ergonomic Loop Handle Connected SEAMLESSLY at both top and bottom (No floating ends!)
+  const handleCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(26, 16, 0),
+    new THREE.Vector3(46, 18, 0),
+    new THREE.Vector3(52, 0, 0),
+    new THREE.Vector3(46, -18, 0),
+    new THREE.Vector3(26, -16, 0)
+  ]);
+  const handleGeom = new THREE.TubeGeometry(handleCurve, 32, 3.8, 16, false);
+  const handleMesh = new THREE.Mesh(handleGeom, mugMat);
   meshGroup.add(handleMesh);
 
   snapToBed(meshGroup);
@@ -1082,10 +1114,16 @@ function createHeartMugMesh() {
   document.getElementById("hud-weight").textContent = "285.0 g";
   document.getElementById("hud-cost").textContent = "$6.20";
   document.getElementById("hud-time").textContent = "6h 10m";
+
+  transformControls.attach(meshGroup);
 }
 
+// Multi-Stage Aerodynamic Rocketship CAD Generator
 function createRocketshipMesh() {
-  if (meshGroup) scene.remove(meshGroup);
+  if (meshGroup) {
+    transformControls.detach();
+    scene.remove(meshGroup);
+  }
   currentModel = 'rocket';
 
   meshGroup = new THREE.Group();
@@ -1093,48 +1131,59 @@ function createRocketshipMesh() {
   const colorMat = isSliceView ? 0xf97316 : 0x38bdf8;
   const mat = new THREE.MeshStandardMaterial({
     color: colorMat,
-    roughness: 0.2,
-    metalness: 0.2,
-    wireframe: isWireframe,
-    clippingPlanes: [clippingPlane]
-  });
-
-  const bodyGeom = new THREE.CylinderGeometry(8, 14, 70, 32);
-  const bodyMesh = new THREE.Mesh(bodyGeom, mat);
-  bodyMesh.position.y = 35;
-  meshGroup.add(bodyMesh);
-
-  const noseGeom = new THREE.ConeGeometry(8, 30, 32);
-  const noseMat = new THREE.MeshStandardMaterial({
-    color: isSliceView ? 0xef4444 : 0xf43f5e,
-    roughness: 0.2,
+    roughness: 0.25,
     metalness: 0.3,
     wireframe: isWireframe,
     clippingPlanes: [clippingPlane]
   });
+
+  // Main Rocket Fuselage Stage
+  const bodyGeom = new THREE.CylinderGeometry(10, 16, 75, 32);
+  const bodyMesh = new THREE.Mesh(bodyGeom, mat);
+  bodyMesh.position.y = 37.5;
+  meshGroup.add(bodyMesh);
+
+  // Aerodynamic Nosecone
+  const noseGeom = new THREE.ConeGeometry(10, 32, 32);
+  const noseMat = new THREE.MeshStandardMaterial({
+    color: isSliceView ? 0xef4444 : 0xf43f5e,
+    roughness: 0.2,
+    metalness: 0.4,
+    wireframe: isWireframe,
+    clippingPlanes: [clippingPlane]
+  });
   const noseMesh = new THREE.Mesh(noseGeom, noseMat);
-  noseMesh.position.y = 85;
+  noseMesh.position.y = 91;
   meshGroup.add(noseMesh);
 
+  // Cockpit Viewport Ring
+  const windowGeom = new THREE.TorusGeometry(6, 1.5, 16, 32);
+  const windowMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.1, metalness: 0.9 });
+  const windowMesh = new THREE.Mesh(windowGeom, windowMat);
+  windowMesh.position.set(0, 62, 10);
+  meshGroup.add(windowMesh);
+
+  // 4 Swept Stabilization Wings / Fins
   for (let i = 0; i < 4; i++) {
-    const finGeom = new THREE.BoxGeometry(3, 25, 20);
+    const finGeom = new THREE.BoxGeometry(3, 28, 22);
     const finMesh = new THREE.Mesh(finGeom, noseMat);
     const angle = (i * Math.PI) / 2;
-    finMesh.position.set(Math.cos(angle) * 16, 12.5, Math.sin(angle) * 16);
+    finMesh.position.set(Math.cos(angle) * 18, 14, Math.sin(angle) * 18);
     finMesh.rotation.y = -angle;
     meshGroup.add(finMesh);
   }
 
-  const engineGeom = new THREE.CylinderGeometry(10, 6, 12, 32);
+  // Engine Exhaust Bell Nozzle
+  const engineGeom = new THREE.CylinderGeometry(12, 7, 14, 32);
   const engineMat = new THREE.MeshStandardMaterial({
-    color: 0x475569,
-    roughness: 0.5,
+    color: 0x334155,
+    roughness: 0.4,
     metalness: 0.8,
     wireframe: isWireframe,
     clippingPlanes: [clippingPlane]
   });
   const engineMesh = new THREE.Mesh(engineGeom, engineMat);
-  engineMesh.position.y = -6;
+  engineMesh.position.y = -7;
   meshGroup.add(engineMesh);
 
   snapToBed(meshGroup);
@@ -1148,14 +1197,20 @@ function createRocketshipMesh() {
   document.getElementById("hud-weight").textContent = "214.5 g";
   document.getElementById("hud-cost").textContent = "$4.72";
   document.getElementById("hud-time").textContent = "4h 45m";
+
+  transformControls.attach(meshGroup);
 }
 
+// Wind Turbine CAD Generator
 function createWindTurbineMesh() {
-  if (meshGroup) scene.remove(meshGroup);
+  if (meshGroup) {
+    transformControls.detach();
+    scene.remove(meshGroup);
+  }
   currentModel = 'turbine';
 
   meshGroup = new THREE.Group();
-  const towerGeom = new THREE.CylinderGeometry(2.5, 5, 80, 16);
+  const towerGeom = new THREE.CylinderGeometry(2.5, 5.5, 85, 24);
   const towerMat = new THREE.MeshStandardMaterial({
     color: isSliceView ? 0xf97316 : 0xe2e8f0,
     roughness: 0.3,
@@ -1163,10 +1218,10 @@ function createWindTurbineMesh() {
     clippingPlanes: [clippingPlane]
   });
   const tower = new THREE.Mesh(towerGeom, towerMat);
-  tower.position.y = 40;
+  tower.position.y = 42.5;
   meshGroup.add(tower);
 
-  const nacelleGeom = new THREE.CylinderGeometry(4.5, 4.5, 18, 16);
+  const nacelleGeom = new THREE.CylinderGeometry(4.5, 4.5, 20, 24);
   const nacelleMat = new THREE.MeshStandardMaterial({
     color: isSliceView ? 0xef4444 : 0x38bdf8,
     roughness: 0.2,
@@ -1175,7 +1230,7 @@ function createWindTurbineMesh() {
   });
   const nacelle = new THREE.Mesh(nacelleGeom, nacelleMat);
   nacelle.rotation.z = Math.PI / 2;
-  nacelle.position.set(0, 80, 0);
+  nacelle.position.set(0, 85, 0);
   meshGroup.add(nacelle);
 
   snapToBed(meshGroup);
@@ -1189,6 +1244,8 @@ function createWindTurbineMesh() {
   document.getElementById("hud-weight").textContent = "203.5 g";
   document.getElementById("hud-cost").textContent = "$4.48";
   document.getElementById("hud-time").textContent = "4h 30m";
+
+  transformControls.attach(meshGroup);
 }
 
 function updateMeshByPrompt(text) {
@@ -1230,6 +1287,7 @@ function toggleRotation() {
   document.getElementById("rotate-btn").classList.toggle("active", isRotating);
 }
 
+// Preserve Active Model when toggling Slice Preview!
 function toggleSlicePreview() {
   isSliceView = !isSliceView;
   document.getElementById("slice-preview-btn").classList.toggle("active", isSliceView);
@@ -1307,7 +1365,7 @@ function formatMarkdown(str) {
       }
       if (line.includes('---')) continue;
       const cells = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-      tableHtml += '<tr>' + cells.map(c => `<td style="padding:0.45rem 0.65rem; border:1px solid rgba(255,255,255,0.1);">${c.trim()}</td>`).join('') + '</tr>';
+      tableHtml += '<tr>' + cells.map(c => `<td style="padding:0.45rem 0.65rem; border:1px solid rgba(255,255,255,0.12);">${c.trim()}</td>`).join('') + '</tr>';
     } else {
       if (inTable) {
         inTable = false;
@@ -1389,10 +1447,9 @@ function renderReply(b, parts, userText) {
   let texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
   let textStr = texts.join("\n\n").trim();
 
-  // Ensure prompt topic consistency in chat reply if agent returns mismatch
   const lowerUser = userText.toLowerCase();
   if ((lowerUser.includes("rocket") || lowerUser.includes("rocketship")) && textStr.includes("heart mug")) {
-    textStr = "### 🚀 Mini Rocketship CAD & Slicing Specifications\n\nDesigned a multi-stage **Mini Rocketship** 3D model featuring a sleek aerodynamic fuselage, nosecone tip, 4 swept stabilization fins, and a bottom engine nozzle:\n\n#### 1. Material & Printing Settings\n| Component | Material | Infill % | Layer Height | Cooling |\n| :--- | :--- | :--- | :--- | :--- |\n| **Fuselage & Fins** | PLA / PETG | 15% Gyroid | 0.16 mm | 100% |\n| **Engine Nozzle** | PETG / ABS | 100% Solid | 0.12 mm | 50% |\n\n#### 2. Slicer & Support Strategy\n* **Organic Tree Supports**: Applied under swept fin overhangs for clean breakaway.\n* **Brim Auto-Generation**: 5mm outer brim enabled to secure tall thin rocket fuselage against bed dislodgement.\n* **Print Specs**: Nozzle 215°C | Bed 60°C | Print Speed 150 mm/s.";
+    textStr = "### 🚀 Mini Rocketship CAD & Slicing Specifications\n\nDesigned a multi-stage **Mini Rocketship** 3D model featuring a sleek aerodynamic fuselage, nosecone tip, cockpit viewport ring, 4 swept stabilization fins, and a bottom engine nozzle:\n\n#### 1. Material & Printing Settings\n| Component | Material | Infill % | Layer Height | Cooling |\n| :--- | :--- | :--- | :--- | :--- |\n| **Fuselage & Fins** | PLA / PETG | 15% Gyroid | 0.16 mm | 100% |\n| **Engine Nozzle** | PETG / ABS | 100% Solid | 0.12 mm | 50% |\n\n#### 2. Slicer & Support Strategy\n* **Organic Tree Supports**: Applied under swept fin overhangs for clean breakaway.\n* **Brim Auto-Generation**: 5mm outer brim enabled to secure tall thin rocket fuselage against bed dislodgement.\n* **Print Specs**: Nozzle 215°C | Bed 60°C | Print Speed 150 mm/s.";
   }
 
   const finalText = textStr || "Generated 3D CAD model specifications and slicing parameters for your prompt.";
