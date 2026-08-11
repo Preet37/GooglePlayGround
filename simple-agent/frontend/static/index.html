@@ -3,53 +3,634 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PrintCraft 3D — AI Slicer & 3D Print Studio</title>
-<!-- Optional: used only to draw A2UI Icon components. If it can't load (offline/
-     corp network), icons fall back to showing their name as text. -->
+<title>PrintCraft 3D — AI Slicer & Hardware CAD Studio</title>
+<!-- Google Fonts & Icons -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined">
+<!-- Three.js & OrbitControls for 3D WebGL Rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
 <style>
-  :root { --accent:#2563eb; --bg:#f8fafc; --border:#e2e8f0; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--bg); display:flex; flex-direction:column; height:100vh; }
-  header { background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color:#f8fafc; padding:1.1rem 1.5rem; font-weight:700; font-size:1.25rem; display:flex; align-items:center; gap:0.5rem; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
+  :root {
+    --bg-dark: #070a12;
+    --panel-bg: rgba(15, 23, 42, 0.75);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --accent-blue: #3b82f6;
+    --accent-cyan: #06b6d4;
+    --accent-purple: #8b5cf6;
+    --accent-glow: rgba(59, 130, 246, 0.25);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --card-bg: rgba(30, 41, 59, 0.7);
+  }
 
-  #log { flex:1; overflow-y:auto; padding:1.2rem; max-width:780px; width:100%; margin:0 auto; }
-  .msg { margin:.6rem 0; }
-  .msg.user { text-align:right; }
-  .bubble { display:inline-block; padding:.6rem .9rem; border-radius:12px; background:#fff; border:1px solid var(--border); text-align:left; max-width:90%; white-space:pre-wrap; }
-  .msg.user .bubble { background:var(--accent); color:#fff; border:none; }
-  /* When the reply is an A2UI card, drop the bubble chrome so the card stands alone. */
-  .bubble.rich { background:transparent; border:none; padding:0; max-width:100%; white-space:normal; }
-  form { display:flex; gap:.5rem; padding:1rem; border-top:1px solid var(--border); background:#fff; }
-  input { flex:1; padding:.7rem; border:1px solid var(--border); border-radius:8px; font-size:1rem; }
-  button { padding:.7rem 1.1rem; border:none; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; cursor:pointer; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* --- A2UI component styles (Card, Column, Row, Text, Divider, List, Image, Icon) --- */
-  .a2card { border:1px solid var(--border); border-radius:12px; padding:1rem; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.06); max-width:100%; }
-  .a2card + .a2card, .a2col > .a2card { margin-top:.6rem; }
-  .a2col { display:flex; flex-direction:column; gap:.4rem; }
-  .a2row { display:flex; flex-direction:row; gap:.6rem; align-items:center; flex-wrap:wrap; }
-  .a2row.between { justify-content:space-between; }
-  .a2text { margin:0; line-height:1.4; }
-  .a2text.a2-h1 { font-size:1.5rem; font-weight:700; }
-  .a2text.a2-h2 { font-size:1.25rem; font-weight:700; }
-  .a2text.a2-h3 { font-size:1.1rem; font-weight:600; }
-  .a2text.a2-h4 { font-size:1rem; font-weight:600; }
-  .a2text.a2-caption { font-size:.85rem; color:#666; }
-  .a2divider { border:none; border-top:1px solid var(--border); margin:.4rem 0; width:100%; }
-  .a2img { max-width:100%; border-radius:8px; display:block; }
-  .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-size:1.25rem; line-height:1; vertical-align:middle; color:var(--accent); }
+  body {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- Top Navigation Bar --- */
+  header {
+    height: 58px;
+    background: rgba(11, 15, 25, 0.9);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    z-index: 100;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.1rem;
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  .status-pills {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .pill {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .pill.active {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #34d399;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #34d399;
+    box-shadow: 0 0 8px #34d399;
+  }
+
+  /* --- Main Workspace Layout (Split Screen) --- */
+  .workspace {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    height: calc(100vh - 58px);
+    position: relative;
+  }
+
+  /* --- Left Sidebar: Copilot Chat & Slicer Controls --- */
+  .copilot-panel {
+    background: var(--panel-bg);
+    backdrop-filter: blur(16px);
+    border-right: 1px solid var(--panel-border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    z-index: 10;
+  }
+
+  .panel-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Prompt Chips */
+  .quick-prompts {
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--panel-border);
+    scrollbar-width: none;
+  }
+
+  .quick-prompts::-webkit-scrollbar { display: none; }
+
+  .chip {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--panel-border);
+    color: #cbd5e1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+  }
+
+  .chip:hover {
+    background: rgba(59, 130, 246, 0.15);
+    border-color: var(--accent-blue);
+    color: #fff;
+  }
+
+  /* Chat Message Log */
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    scroll-behavior: smooth;
+  }
+
+  .msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 90%;
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user {
+    align-self: flex-end;
+  }
+
+  .msg.agent {
+    align-self: flex-start;
+  }
+
+  .bubble {
+    padding: 0.85rem 1.1rem;
+    border-radius: 14px;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .msg.user .bubble {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  }
+
+  .msg.agent .bubble {
+    background: var(--card-bg);
+    border: 1px solid var(--panel-border);
+    color: #f1f5f9;
+    border-bottom-left-radius: 4px;
+  }
+
+  .bubble.rich {
+    background: transparent;
+    border: none;
+    padding: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  /* Chat Input Form */
+  form {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--panel-border);
+    background: rgba(11, 15, 25, 0.8);
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .input-wrapper {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  input {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--panel-border);
+    color: #fff;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+
+  input:focus {
+    border-color: var(--accent-blue);
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  button {
+    padding: 0.8rem 1.25rem;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    box-shadow: 0 4px 12px var(--accent-glow);
+  }
+
+  button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(6, 182, 212, 0.35);
+  }
+
+  /* --- Right Studio Canvas: Interactive 3D WebGL Viewport --- */
+  .viewport-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, #111827 0%, #030712 100%);
+    overflow: hidden;
+  }
+
+  #webgl-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* HUD Stats Overlay (Onshape / Flux style) */
+  .hud-overlay {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    pointer-events: none;
+    z-index: 20;
+  }
+
+  .hud-card {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    width: 260px;
+    pointer-events: auto;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  }
+
+  .hud-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .hud-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .stat-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #38bdf8;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  /* Floating Viewport Controls */
+  .viewport-controls {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    padding: 0.4rem;
+    border-radius: 12px;
+    border: 1px solid var(--panel-border);
+    z-index: 20;
+  }
+
+  .control-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .control-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+  }
+
+  /* --- A2UI Cards Custom Modern Styling --- */
+  .a2card {
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 1.1rem;
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    margin-top: 0.5rem;
+  }
+
+  .a2col { display: flex; flex-direction: column; gap: 0.5rem; }
+  .a2row { display: flex; flex-direction: row; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+  .a2row.between { justify-content: space-between; }
+  .a2text { line-height: 1.4; color: #f8fafc; }
+  .a2text.a2-h1 { font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 700; color: #38bdf8; }
+  .a2text.a2-h2 { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 700; color: #f1f5f9; }
+  .a2text.a2-h3 { font-size: 1rem; font-weight: 600; color: #cbd5e1; }
+  .a2text.a2-caption { font-size: 0.8rem; color: #94a3b8; }
+  .a2divider { border: none; border-top: 1px solid var(--panel-border); margin: 0.5rem 0; width: 100%; }
+  .material-symbols-outlined { font-size: 1.2rem; color: var(--accent-blue); vertical-align: middle; }
 </style>
 </head>
 <body>
-<header>🖨️ PrintCraft 3D — AI Slicer & Hardware Studio</header>
-<div id="log"></div>
-<form id="form">
-  <input id="input" placeholder="Ask something…" autocomplete="off" autofocus>
-  <button>Send</button>
-</form>
 
+<!-- Top Navigation -->
+<header>
+  <div class="brand">
+    <div class="brand-icon">⚡</div>
+    <span>PrintCraft 3D Studio</span>
+  </div>
+  <div class="status-pills">
+    <div class="pill active">
+      <div class="status-dot"></div>
+      Gemini 2.5 Copilot
+    </div>
+    <div class="pill">
+      <span class="material-symbols-outlined" style="font-size:0.9rem;">database</span>
+      Firestore Connected
+    </div>
+    <div class="pill">
+      <span class="material-symbols-outlined" style="font-size:0.9rem;">view_in_ar</span>
+      WebGL 3D Engine
+    </div>
+  </div>
+</header>
+
+<!-- Main Workspace -->
+<div class="workspace">
+
+  <!-- Left Sidebar: Copilot Chat -->
+  <div class="copilot-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span class="material-symbols-outlined">auto_awesome</span>
+        AI Slicer & Print Assistant
+      </div>
+    </div>
+
+    <!-- Quick Prompts -->
+    <div class="quick-prompts">
+      <div class="chip" onclick="sendPrompt('Check Bambu X1C specs')">🖨️ Bambu X1C Specs</div>
+      <div class="chip" onclick="sendPrompt('Calculate print time and cost for 150cm³ PLA')">📊 Calculate Cost (150cm³)</div>
+      <div class="chip" onclick="sendPrompt('List all slicer presets')">⚙️ Slicer Presets</div>
+      <div class="chip" onclick="sendPrompt('How to fix PETG stringing?')">🛠️ PETG Stringing Fix</div>
+    </div>
+
+    <!-- Chat Log -->
+    <div id="log">
+      <div class="msg agent">
+        <div class="bubble">Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Ask me to query materials, 3D printer hardware specs, calculate print times, or solve printing artifacts.</div>
+      </div>
+    </div>
+
+    <!-- Chat Input Form -->
+    <form id="form">
+      <div class="input-wrapper">
+        <input id="input" placeholder="Type prompt or ask about 3D printing…" autocomplete="off" autofocus>
+      </div>
+      <button type="submit">
+        <span>Send</span>
+        <span class="material-symbols-outlined" style="font-size:1.1rem;">send</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Right Studio Viewport: Three.js Interactive 3D Model -->
+  <div class="viewport-container">
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- HUD Overlay Stats -->
+    <div class="hud-overlay">
+      <div class="hud-card">
+        <div class="hud-header">
+          <span>Active Mesh Telemetry</span>
+          <span class="material-symbols-outlined" style="font-size:1rem; color:#38bdf8;">analytics</span>
+        </div>
+        <div class="hud-grid">
+          <div class="stat-item">
+            <span class="stat-label">Model Volume</span>
+            <span class="stat-value" id="hud-volume">142.5 cm³</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Filament Weight</span>
+            <span class="stat-value" id="hud-weight">156.8 g</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Est. Cost</span>
+            <span class="stat-value" id="hud-cost">$3.45</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Print Time</span>
+            <span class="stat-value" id="hud-time">3h 42m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Viewport Controls -->
+    <div class="viewport-controls">
+      <button class="control-btn" title="Toggle Wireframe" onclick="toggleWireframe()">
+        <span class="material-symbols-outlined">grid_4x4</span>
+      </button>
+      <button class="control-btn" title="Rotate Mesh" onclick="rotateMesh()">
+        <span class="material-symbols-outlined">3d_rotation</span>
+      </button>
+      <button class="control-btn" title="Reset Camera" onclick="resetCamera()">
+        <span class="material-symbols-outlined">center_focus_strong</span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Interactive Three.js Script -->
 <script>
+// --- Three.js WebGL Scene Setup ---
+let scene, camera, renderer, controls, mesh;
+let isWireframe = false;
+
+function init3D() {
+  const container = document.querySelector('.viewport-container');
+  const canvas = document.getElementById('webgl-canvas');
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x070a12);
+
+  camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.set(120, 100, 140);
+
+  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  // Lights
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
+
+  const dirLight1 = new THREE.DirectionalLight(0x38bdf8, 1.2);
+  dirLight1.position.set(100, 150, 100);
+  scene.add(dirLight1);
+
+  const dirLight2 = new THREE.DirectionalLight(0x818cf8, 0.8);
+  dirLight2.position.set(-100, -50, -100);
+  scene.add(dirLight2);
+
+  // 3D Printer Build Plate Grid
+  const grid = new THREE.GridHelper(220, 22, 0x3b82f6, 0x1e293b);
+  grid.position.y = -20;
+  scene.add(grid);
+
+  // Create Parametric Mechanical Gear / 3D Part Mesh
+  const geometry = new THREE.TorusKnotGeometry(25, 8, 120, 16);
+  const material = new THREE.MeshStandardMaterial({
+    color: 0x2563eb,
+    roughness: 0.2,
+    metalness: 0.5,
+    wireframe: false
+  });
+
+  mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = 15;
+  scene.add(mesh);
+
+  animate();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (mesh) mesh.rotation.y += 0.005;
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+function toggleWireframe() {
+  if (mesh) {
+    isWireframe = !isWireframe;
+    mesh.material.wireframe = isWireframe;
+  }
+}
+
+function rotateMesh() {
+  if (mesh) mesh.rotation.x += Math.PI / 4;
+}
+
+function resetCamera() {
+  camera.position.set(120, 100, 140);
+  controls.reset();
+}
+
+window.addEventListener('resize', () => {
+  const container = document.querySelector('.viewport-container');
+  if (container && camera && renderer) {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  }
+});
+
+init3D();
+
+// --- Chat & A2UI Handling ---
 const log = document.getElementById("log");
 const form = document.getElementById("form");
 const input = document.getElementById("input");
@@ -63,14 +644,12 @@ function bubble(who) {
   return b;
 }
 
-/* ----------------------------------------------------------------------------
- * A2UI mini-renderer (v0.8 Basic Catalog subset).
- * Renders Card / Column / Row / Text / Divider / List / Image / Icon.
- * Anything else falls back to plain text (see renderReply). All text goes in via
- * textContent and image URLs are validated, so agent output can't inject HTML.
- * -------------------------------------------------------------------------- */
+function sendPrompt(text) {
+  input.value = text;
+  form.dispatchEvent(new Event('submit'));
+}
 
-// A "bound value" is usually {literalString: "..."}; we only support literals.
+/* A2UI Subset Renderer */
 function boundStr(v) {
   if (v == null) return "";
   if (typeof v === "string") return v;
@@ -78,7 +657,6 @@ function boundStr(v) {
   return "";
 }
 
-// child ids of a component's props: single `child` and/or `children.explicitList`.
 function childIds(props) {
   const ids = [];
   if (props && typeof props.child === "string") ids.push(props.child);
@@ -87,11 +665,10 @@ function childIds(props) {
   return ids;
 }
 
-// A2UI icon names are camelCase (locationOn); Material Symbols wants snake_case.
 function iconName(n) { return String(n || "").replace(/([a-z0-9])([A-Z])/g, "$1_$2").replace(/\s+/g, "_").toLowerCase(); }
 
 function buildNode(id, comps, seen) {
-  if (!id || seen.has(id)) return null;   // missing / cycle guard
+  if (!id || seen.has(id)) return null;
   seen.add(id);
   const spec = comps[id];
   if (!spec || typeof spec !== "object") return null;
@@ -122,21 +699,14 @@ function buildNode(id, comps, seen) {
     }
     case "Divider":
       return el("hr", "a2divider");
-    case "Image": {
-      const src = boundStr(props.url || props.src);
-      if (!/^https?:\/\//i.test(src)) return null;   // only allow safe URLs
-      const img = el("img", "a2img"); img.src = src; img.alt = boundStr(props.alt) || ""; return img;
-    }
     case "Icon": {
       const s = el("span", "material-symbols-outlined"); s.textContent = iconName(boundStr(props.name) || props.name); return s;
     }
     default:
-      return null;   // unknown component -> skipped (text fallback covers content)
+      return null;
   }
 }
 
-// Render one or more A2UI messages (beginRendering + surfaceUpdate) into `container`.
-// Returns true if anything was drawn.
 function renderSurface(messages, container) {
   const comps = {};
   const roots = [];
@@ -146,7 +716,7 @@ function renderSurface(messages, container) {
     if (su && Array.isArray(su.components)) for (const c of su.components) if (c && c.id && c.component) comps[c.id] = c.component;
   }
   let rootIds = roots.filter(r => comps[r]);
-  if (rootIds.length === 0) {   // no valid root given -> infer un-referenced components
+  if (rootIds.length === 0) {
     const referenced = new Set();
     for (const id in comps) { const spec = comps[id]; childIds(spec[Object.keys(spec)[0]] || {}).forEach(c => referenced.add(c)); }
     rootIds = Object.keys(comps).filter(id => !referenced.has(id));
@@ -156,7 +726,6 @@ function renderSurface(messages, container) {
   return drew;
 }
 
-// Fallback: pull every Text value out of the messages as plain text.
 function flattenText(messages) {
   const out = [];
   for (const m of messages) {
@@ -167,7 +736,7 @@ function flattenText(messages) {
 }
 
 function renderReply(b, parts) {
-  b.textContent = "";   // clear the "…" placeholder
+  b.textContent = "";
   const texts = parts.filter(p => p && (p.kind === "text" || (!p.kind && p.text))).map(p => p.text || "");
   const a2ui = parts.filter(p => p && p.kind === "a2ui" && p.data).map(p => p.data);
 
@@ -182,7 +751,6 @@ function renderReply(b, parts) {
   log.scrollTop = log.scrollHeight;
 }
 
-// The proxy returns { parts: [{kind:"text",text} | {kind:"a2ui",data}] }.
 form.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const text = input.value.trim();
@@ -192,9 +760,6 @@ form.addEventListener("submit", async (ev) => {
   const b = bubble("agent"); b.textContent = "…";
   try {
     const res = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: text }) });
-    // Read as text first, then parse. If the proxy ever returns a non-JSON error
-    // page (e.g. a plain "Internal Server Error"), show that body instead of a
-    // cryptic "Unexpected token" JSON error.
     const raw = await res.text();
     let data;
     try { data = JSON.parse(raw); }
@@ -205,5 +770,6 @@ form.addEventListener("submit", async (ev) => {
   }
 });
 </script>
+
 </body>
 </html>
