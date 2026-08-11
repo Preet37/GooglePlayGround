@@ -1,0 +1,38 @@
+# PrintCraft 3D Master Troubleshooting & Slicing Reference Guide
+
+## 1. Material Guidelines & Temperature Profiles
+- PLA (Polylactic Acid):
+  - Nozzle Temp: 200°C - 215°C | Bed Temp: 50°C - 60°C
+  - Cooling Fan: 100% after layer 2.
+  - Recommended for: Fast draft prototyping, low-stress models, decorative items.
+  - Limitations: Warps under direct sunlight or temperatures above 50°C.
+- PETG (Polyethylene Terephthalate Glycol):
+  - Nozzle Temp: 235°C - 250°C | Bed Temp: 75°C - 85°C
+  - Cooling Fan: 30% - 50% (lower fan speed improves layer adhesion and tensile strength).
+  - Recommended for: Outdoor brackets, mechanical joints, water-resistant containers.
+  - Tuning Tip: Requires 0.05mm more Z-offset / first-layer gap than PLA to prevent nozzle buildup and excessive bed sticking.
+- TPU (Thermoplastic Polyurethane 95A):
+  - Nozzle Temp: 225°C - 240°C | Bed Temp: 40°C - 60°C
+  - Retraction: Disable or keep very low (0.5mm at 20mm/s) on direct drive; avoid Bowden setups if possible.
+  - Print Speed: Slow (20mm/s - 35mm/s).
+
+## 2. Common Print Failure Remedies & Troubleshooting
+- Stringing & Oozing:
+  - Cause: Nozzle temp too high, retraction distance/speed too low, or wet filament.
+  - Fix: Increase retraction distance by 0.5mm, lower nozzle temp by 5°C, or dry filament at 50°C for 4 hours.
+- Bed Adhesion Failure / Warping:
+  - Cause: Bed not level, Z-offset too high, bed temp too low, or drafty environment.
+  - Fix: Clean bed with 99% Isopropyl Alcohol (IPA), lower Z-offset by 0.02mm for proper first-layer squish, use brim or raft for sharp-cornered models.
+- Layer Separation / Delamination:
+  - Cause: Excessive cooling fan speed, low nozzle temperature, or high print speed.
+  - Fix: Increase nozzle temperature by 10°C, reduce cooling fan speed to 20-40%, and lower print speed.
+
+## 3. Structural Slicing Optimization & Overhang Rules
+- Infill Patterns & Strength:
+  - Gyroid Infill: Best isotropic strength in all X/Y/Z directions; eliminates nozzle colliding with intersecting lines.
+  - Grid / Cubic Infill: Faster print times, ideal for non-structural top surfaces.
+  - Structural Recommendations: Use 4 wall loops / perimeters with 25-30% Gyroid infill for maximum load-bearing efficiency instead of 100% infill (which wastes filament and increases print time without proportional strength gains).
+- Overhangs & Support Settings:
+  - Angles < 45°: No supports required.
+  - Angles 45° - 60°: Printable with 100% cooling fan; minor drooping may occur underneath.
+  - Angles > 60°: Tree supports (Slim/Organic) recommended with 0.2mm Z-distance gap for clean removal.
