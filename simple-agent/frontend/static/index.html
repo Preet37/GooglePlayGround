@@ -1259,41 +1259,92 @@ function startAILoadingAnimation(promptTitle, callback) {
 }
 
 // --- Feature 1: PrusaSlicer Realistic G-Code Infill & Toolpath Generator ---
+function getModelContourPoints(bounds) {
+  const points = [];
+  const cx = bounds.centerX;
+  const cz = bounds.centerZ;
+  const rx = bounds.radiusX * 0.95;
+  const rz = bounds.radiusZ * 0.95;
+
+  if (currentModel === 'mug') {
+    // Exact Heart parametric curve contour!
+    for (let i = 0; i <= 60; i++) {
+      const t = (i / 60) * Math.PI * 2;
+      const hx = 16 * Math.pow(Math.sin(t), 3);
+      const hz = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+      points.push(new THREE.Vector2(cx + (hx / 16) * rx, cz + (hz / 17) * rz));
+    }
+  } else if (currentModel === 'gear') {
+    // Precision gear tooth contour
+    const teeth = 12;
+    for (let i = 0; i <= 60; i++) {
+      const a = (i / 60) * Math.PI * 2;
+      const rMod = 0.85 + 0.15 * Math.sin(a * teeth);
+      points.push(new THREE.Vector2(cx + Math.cos(a) * (rx * rMod), cz + Math.sin(a) * (rz * rMod)));
+    }
+  } else if (currentModel === 'hammer' || currentModel === 'phone' || currentModel === 'chair' || currentModel === 'table') {
+    // Box / Rectangular perimeter wall contour
+    const pts = [
+      new THREE.Vector2(cx - rx, cz - rz),
+      new THREE.Vector2(cx + rx, cz - rz),
+      new THREE.Vector2(cx + rx, cz + rz),
+      new THREE.Vector2(cx - rx, cz + rz),
+      new THREE.Vector2(cx - rx, cz - rz)
+    ];
+    for (let i = 0; i <= 60; i++) {
+      const t = (i / 60) * 4;
+      const seg = Math.floor(t) % 4;
+      const frac = t - Math.floor(t);
+      const p1 = pts[seg];
+      const p2 = pts[(seg + 1) % 4];
+      points.push(new THREE.Vector2(p1.x + (p2.x - p1.x) * frac, p1.y + (p2.y - p1.y) * frac));
+    }
+  } else {
+    // Smooth parametric profile contour
+    for (let i = 0; i <= 60; i++) {
+      const a = (i / 60) * Math.PI * 2;
+      points.push(new THREE.Vector2(cx + Math.cos(a) * rx, cz + Math.sin(a) * rz));
+    }
+  }
+  return points;
+}
+
 function renderGCodeToolpathLayer(cutY, bounds) {
   if (toolpathLineGroup) { scene.remove(toolpathLineGroup); }
   toolpathLineGroup = new THREE.Group();
 
-  const rx = bounds.radiusX * 0.96;
-  const rz = bounds.radiusZ * 0.96;
+  const contour = getModelContourPoints(bounds);
   const cx = bounds.centerX;
   const cz = bounds.centerZ;
+  const rx = bounds.radiusX * 0.96;
+  const rz = bounds.radiusZ * 0.96;
 
-  // 1. Skirt / Brim Loop (Green #22c55e)
+  // 1. Skirt / Brim Loop (Green #22c55e) - Offset Contour
   const brimPoints = [];
-  const segments = 48;
-  for (let i = 0; i <= segments; i++) {
-    const a = (i / segments) * Math.PI * 2;
-    brimPoints.push(new THREE.Vector3(cx + Math.cos(a) * (rx + 8), cutY + 0.15, cz + Math.sin(a) * (rz + 8)));
+  for (let i = 0; i < contour.length; i++) {
+    const pt = contour[i];
+    const dx = pt.x - cx;
+    const dz = pt.y - cz;
+    const len = Math.sqrt(dx * dx + dz * dz) || 1;
+    brimPoints.push(new THREE.Vector3(pt.x + (dx / len) * 8, cutY + 0.15, pt.y + (dz / len) * 8));
   }
   const brimGeom = new THREE.BufferGeometry().setFromPoints(brimPoints);
   const brimLine = new THREE.Line(brimGeom, new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2.5 }));
   toolpathLineGroup.add(brimLine);
 
-  // 2. Outer Perimeter Loop (Orange #f97316)
-  const outerPoints = [];
-  for (let i = 0; i <= segments; i++) {
-    const a = (i / segments) * Math.PI * 2;
-    outerPoints.push(new THREE.Vector3(cx + Math.cos(a) * rx, cutY + 0.15, cz + Math.sin(a) * rz));
-  }
+  // 2. Outer Perimeter Loop (Orange #f97316) - Exact Model Contour
+  const outerPoints = contour.map(p => new THREE.Vector3(p.x, cutY + 0.15, p.y));
   const outerGeom = new THREE.BufferGeometry().setFromPoints(outerPoints);
   const outerLine = new THREE.Line(outerGeom, new THREE.LineBasicMaterial({ color: 0xf97316, linewidth: 3 }));
   toolpathLineGroup.add(outerLine);
 
-  // 3. Inner Perimeter Loop (Yellow #eab308)
+  // 3. Inner Perimeter Loop (Yellow #eab308) - Inner Offset Contour
   const innerPoints = [];
-  for (let i = 0; i <= segments; i++) {
-    const a = (i / segments) * Math.PI * 2;
-    innerPoints.push(new THREE.Vector3(cx + Math.cos(a) * (rx - 2.5), cutY + 0.15, cz + Math.sin(a) * (rz - 2.5)));
+  for (let i = 0; i < contour.length; i++) {
+    const pt = contour[i];
+    const dx = pt.x - cx;
+    const dz = pt.y - cz;
+    innerPoints.push(new THREE.Vector3(cx + dx * 0.9, cutY + 0.15, cz + dz * 0.9));
   }
   const innerGeom = new THREE.BufferGeometry().setFromPoints(innerPoints);
   const innerLine = new THREE.Line(innerGeom, new THREE.LineBasicMaterial({ color: 0xeab308, linewidth: 2 }));
@@ -1814,7 +1865,7 @@ function animate() {
     document.getElementById("layer-range").value = printProgress;
     updateLayerCut(printProgress);
     updateToolpathScrub((printProgress * 12) % 100);
-    meshGroup.rotation.y += 0.003;
+    // Part stays 100% stationary on PEI bed like a real 3D printer!
   } else if (meshGroup && isRotating) {
     meshGroup.rotation.y += 0.005;
   }
@@ -1847,9 +1898,11 @@ function updateLayerCut(val) {
   const cutY = bounds.minY + (val / 100) * bounds.height;
   clippingPlane.constant = cutY;
 
+  const contour = getModelContourPoints(bounds);
+  const pt = contour[0] || new THREE.Vector2(bounds.centerX, bounds.centerZ);
   nozzleMesh.position.y = cutY;
-  nozzleMesh.position.x = bounds.centerX;
-  nozzleMesh.position.z = bounds.centerZ;
+  nozzleMesh.position.x = pt.x;
+  nozzleMesh.position.z = pt.y;
   nozzleMesh.visible = (val < 100);
 
   if (val < 100 || isSliceView) {
@@ -1864,9 +1917,9 @@ function updateLayerCut(val) {
 
   const term = document.getElementById("gcode-lines");
   term.innerHTML = `
-    ${lineCount - 2} G1 X${(bounds.centerX + Math.cos(val) * bounds.radiusX).toFixed(3)} Y${cutY.toFixed(3)} Z${(bounds.centerZ + Math.sin(val) * bounds.radiusZ).toFixed(3)} E.01488<br>
-    ${lineCount - 1} G1 X${(bounds.centerX + Math.cos(val + 0.1) * bounds.radiusX).toFixed(3)} Y${cutY.toFixed(3)} Z${(bounds.centerZ + Math.sin(val + 0.1) * bounds.radiusZ).toFixed(3)} E.01485<br>
-    ${lineCount} G1 X${(bounds.centerX + Math.cos(val + 0.2) * bounds.radiusX).toFixed(3)} Y${cutY.toFixed(3)} Z${(bounds.centerZ + Math.sin(val + 0.2) * bounds.radiusZ).toFixed(3)} E.01609
+    ${lineCount - 2} G1 X${pt.x.toFixed(3)} Y${cutY.toFixed(3)} Z${pt.y.toFixed(3)} E.01488<br>
+    ${lineCount - 1} G1 X${(pt.x + 0.1).toFixed(3)} Y${cutY.toFixed(3)} Z${(pt.y + 0.1).toFixed(3)} E.01485<br>
+    ${lineCount} G1 X${(pt.x + 0.2).toFixed(3)} Y${cutY.toFixed(3)} Z${(pt.y + 0.2).toFixed(3)} E.01609
   `;
 }
 
@@ -1876,9 +1929,12 @@ function updateToolpathScrub(val) {
   const layerVal = document.getElementById("layer-range").value;
   const cutY = bounds.minY + (layerVal / 100) * bounds.height;
 
-  const angle = (val / 100) * Math.PI * 2;
-  nozzleMesh.position.x = bounds.centerX + Math.cos(angle) * (bounds.radiusX * 0.95);
-  nozzleMesh.position.z = bounds.centerZ + Math.sin(angle) * (bounds.radiusZ * 0.95);
+  const contour = getModelContourPoints(bounds);
+  const idx = Math.floor((val / 100) * (contour.length - 1));
+  const pt = contour[idx] || new THREE.Vector2(bounds.centerX, bounds.centerZ);
+
+  nozzleMesh.position.x = pt.x;
+  nozzleMesh.position.z = pt.y;
   nozzleMesh.position.y = cutY;
   nozzleMesh.visible = true;
 
@@ -1886,9 +1942,9 @@ function updateToolpathScrub(val) {
   document.getElementById("toolpath-val").textContent = `Extrusion: Line #${currentLine}`;
   const term = document.getElementById("gcode-lines");
   term.innerHTML = `
-    ${currentLine - 2} G1 X${(nozzleMesh.position.x - 0.5).toFixed(3)} Y${cutY.toFixed(3)} Z${(nozzleMesh.position.z - 0.5).toFixed(3)} E.01421<br>
-    ${currentLine - 1} G1 X${nozzleMesh.position.x.toFixed(3)} Y${cutY.toFixed(3)} Z${nozzleMesh.position.z.toFixed(3)} E.01485<br>
-    ${currentLine} G1 X${(nozzleMesh.position.x + 0.5).toFixed(3)} Y${cutY.toFixed(3)} Z${(nozzleMesh.position.z + 0.5).toFixed(3)} E.01512
+    ${currentLine - 2} G1 X${(pt.x - 0.5).toFixed(3)} Y${cutY.toFixed(3)} Z${(pt.y - 0.5).toFixed(3)} E.01421<br>
+    ${currentLine - 1} G1 X${pt.x.toFixed(3)} Y${cutY.toFixed(3)} Z${pt.y.toFixed(3)} E.01485<br>
+    ${currentLine} G1 X${(pt.x + 0.5).toFixed(3)} Y${cutY.toFixed(3)} Z${(pt.y + 0.5).toFixed(3)} E.01512
   `;
 }
 
