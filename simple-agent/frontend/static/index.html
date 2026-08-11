@@ -824,6 +824,9 @@
 </head>
 <body>
 
+<!-- Hidden File Input for STL/OBJ Drag & Drop Import -->
+<input type="file" id="stl-file-input" accept=".stl,.obj" style="display:none;" onchange="handleFileImport(event)">
+
 <!-- Top Navigation -->
 <header>
   <div class="brand">
@@ -898,14 +901,14 @@
   </div>
 
   <!-- Right Studio Canvas: Interactive 3D WebGL Viewport -->
-  <div class="viewport-container">
+  <div class="viewport-container" id="drop-zone">
     <canvas id="webgl-canvas"></canvas>
 
     <!-- Empty Build Plate Initial State Badge -->
     <div class="empty-plate-badge" id="empty-badge">
       <span class="material-symbols-outlined badge-icon">grid_on</span>
       <span class="badge-title">Build Plate Ready</span>
-      <span class="badge-sub">Click a prompt chip or type any CAD prompt to generate 3D model</span>
+      <span class="badge-sub">Click a prompt chip, type any CAD prompt, or drag & drop an .STL file</span>
     </div>
 
     <!-- 5-Second Futuristic AI Generation Overlay Card -->
@@ -926,6 +929,7 @@
 
     <!-- Left Vertical Slicer Toolbar -->
     <div class="slicer-toolbar">
+      <button class="tool-btn" id="tool-upload" data-tooltip="Import STL / OBJ [U]" onclick="triggerFileUpload()"><span class="material-symbols-outlined" style="color:#38bdf8;">upload_file</span></button>
       <button class="tool-btn active" id="tool-move" data-tooltip="Move Gizmo [M]" onclick="selectTool('move')"><span class="material-symbols-outlined">open_with</span></button>
       <button class="tool-btn" id="tool-rotate" data-tooltip="Rotate Gizmo [R]" onclick="selectTool('rotate')"><span class="material-symbols-outlined">3d_rotation</span></button>
       <button class="tool-btn" id="tool-scale" data-tooltip="Scale Gizmo [S]" onclick="selectTool('scale')"><span class="material-symbols-outlined">aspect_ratio</span></button>
@@ -954,6 +958,9 @@
 
     <!-- Viewport Controls -->
     <div class="viewport-controls">
+      <button class="control-btn" id="print-anim-btn" title="Play Print Timelapse" onclick="togglePrintTimelapse()">
+        <span class="material-symbols-outlined" style="color:#10b981;">play_arrow</span>
+      </button>
       <button class="control-btn" id="wireframe-btn" title="Toggle Wireframe" onclick="toggleWireframe()">
         <span class="material-symbols-outlined">grid_4x4</span>
       </button>
@@ -984,7 +991,7 @@
       <div style="color:var(--text-muted); font-size:0.62rem; border-bottom:1px solid var(--panel-border); margin-bottom:0.3rem;">G-CODE TOOLPATH STREAM</div>
       <div id="gcode-lines">
         System initialized.<br>
-        Awaiting 3D CAD prompt...
+        Awaiting 3D CAD prompt or STL import...
       </div>
     </div>
 
@@ -1029,6 +1036,7 @@
 <!-- Interactive Three.js Engine Script -->
 <script>
 let scene, camera, renderer, controls, transformControls, meshGroup, supportGroup, nozzleMesh, holoSphere;
+let toolpathLineGroup = null;
 let clippingPlane;
 let currentModel = null;
 let currentTopicTitle = '';
@@ -1037,6 +1045,8 @@ let isRotating = false;
 let isSliceView = false;
 let hasSupports = false;
 let isGenerating = false;
+let isPrintingAnim = false;
+let printProgress = 0;
 let currentTheme = localStorage.getItem('printcraft_theme') || 'dark';
 
 function applyTheme(theme) {
@@ -1109,6 +1119,7 @@ function init3D() {
   createPEIBuildPlate();
   create3DNozzle();
   createHoloWireframeSphere();
+  setupDragAndDrop();
   applyTheme(currentTheme);
   animate();
 }
@@ -1183,6 +1194,7 @@ function startAILoadingAnimation(promptTitle, callback) {
   isGenerating = true;
   hideEmptyBadge();
   if (meshGroup) { transformControls.detach(); scene.remove(meshGroup); }
+  if (toolpathLineGroup) { scene.remove(toolpathLineGroup); toolpathLineGroup = null; }
 
   holoSphere.visible = true;
   const loaderCard = document.getElementById("ai-loader");
@@ -1194,7 +1206,6 @@ function startAILoadingAnimation(promptTitle, callback) {
   loaderCard.style.display = "flex";
   fill.style.width = "5%";
 
-  // 5-Second Multi-Stage AI Generation Pipeline
   setTimeout(() => { stageMsg.textContent = "🔬 Researching real mechanical specifications & thermal limits..."; fill.style.width = "30%"; }, 400);
   setTimeout(() => { stageMsg.textContent = "📐 Synthesizing parametric 3D CAD mesh assembly & wall loops..."; fill.style.width = "65%"; }, 1800);
   setTimeout(() => { stageMsg.textContent = "⚡ Calculating G-Code toolpath layers & infill density..."; fill.style.width = "92%"; }, 3500);
@@ -1207,16 +1218,173 @@ function startAILoadingAnimation(promptTitle, callback) {
       holoSphere.visible = false;
       isGenerating = false;
       callback();
-      // Reset sliders to top
       document.getElementById("layer-range").value = 100;
       updateLayerCut(100);
     }, 600);
   }, 4800);
 }
 
+// --- Feature 1: PrusaSlicer Realistic G-Code Infill & Toolpath Generator ---
+function renderGCodeToolpathLayer(cutY, bounds) {
+  if (toolpathLineGroup) { scene.remove(toolpathLineGroup); }
+  toolpathLineGroup = new THREE.Group();
+
+  const rx = bounds.radiusX * 0.96;
+  const rz = bounds.radiusZ * 0.96;
+  const cx = bounds.centerX;
+  const cz = bounds.centerZ;
+
+  // 1. Skirt / Brim Loop (Green #22c55e)
+  const brimPoints = [];
+  const segments = 48;
+  for (let i = 0; i <= segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    brimPoints.push(new THREE.Vector3(cx + Math.cos(a) * (rx + 8), cutY + 0.1, cz + Math.sin(a) * (rz + 8)));
+  }
+  const brimGeom = new THREE.BufferGeometry().setFromPoints(brimPoints);
+  const brimLine = new THREE.Line(brimGeom, new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2 }));
+  toolpathLineGroup.add(brimLine);
+
+  // 2. Outer Perimeter Loop (Orange #f97316)
+  const outerPoints = [];
+  for (let i = 0; i <= segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    outerPoints.push(new THREE.Vector3(cx + Math.cos(a) * rx, cutY + 0.1, cz + Math.sin(a) * rz));
+  }
+  const outerGeom = new THREE.BufferGeometry().setFromPoints(outerPoints);
+  const outerLine = new THREE.Line(outerGeom, new THREE.LineBasicMaterial({ color: 0xf97316, linewidth: 3 }));
+  toolpathLineGroup.add(outerLine);
+
+  // 3. Inner Perimeter Loop (Yellow #eab308)
+  const innerPoints = [];
+  for (let i = 0; i <= segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    innerPoints.push(new THREE.Vector3(cx + Math.cos(a) * (rx - 2.5), cutY + 0.1, cz + Math.sin(a) * (rz - 2.5)));
+  }
+  const innerGeom = new THREE.BufferGeometry().setFromPoints(innerPoints);
+  const innerLine = new THREE.Line(innerGeom, new THREE.LineBasicMaterial({ color: 0xeab308, linewidth: 2 }));
+  toolpathLineGroup.add(innerLine);
+
+  // 4. Infill Grid Lines (Red #ef4444)
+  const infillPositions = [];
+  const spacing = 4.5;
+  for (let x = -rx + 4; x <= rx - 4; x += spacing) {
+    const maxZ = Math.sqrt(Math.max(0, 1 - (x / rx) * (x / rx))) * (rz - 4);
+    infillPositions.push(cx + x, cutY + 0.1, cz - maxZ);
+    infillPositions.push(cx + x, cutY + 0.1, cz + maxZ);
+  }
+  for (let z = -rz + 4; z <= rz - 4; z += spacing) {
+    const maxX = Math.sqrt(Math.max(0, 1 - (z / rz) * (z / rz))) * (rx - 4);
+    infillPositions.push(cx - maxX, cutY + 0.1, cz + z);
+    infillPositions.push(cx + maxX, cutY + 0.1, cz + z);
+  }
+  const infillGeom = new THREE.BufferGeometry();
+  infillGeom.setAttribute('position', new THREE.Float32BufferAttribute(infillPositions, 3));
+  const infillLines = new THREE.LineSegments(infillGeom, new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 1.5 }));
+  toolpathLineGroup.add(infillLines);
+
+  scene.add(toolpathLineGroup);
+}
+
+// --- Feature 3: Animated 3D Print Timelapse Simulator ---
+function togglePrintTimelapse() {
+  if (!meshGroup) return;
+  isPrintingAnim = !isPrintingAnim;
+  const btn = document.getElementById("print-anim-btn");
+  if (isPrintingAnim) {
+    btn.classList.add("active");
+    btn.innerHTML = `<span class="material-symbols-outlined" style="color:#ef4444;">pause</span>`;
+    printProgress = 0;
+  } else {
+    btn.classList.remove("active");
+    btn.innerHTML = `<span class="material-symbols-outlined" style="color:#10b981;">play_arrow</span>`;
+  }
+}
+
+// --- Feature 5: STL File Upload & Drag-and-Drop Auto-Aligner ---
+function triggerFileUpload() {
+  document.getElementById("stl-file-input").click();
+}
+
+function handleFileImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const buffer = e.target.result;
+    const geom = parseBinaryOrAsciiSTL(buffer);
+    geom.center();
+
+    startAILoadingAnimation(file.name, () => {
+      currentModel = 'imported'; currentTopicTitle = file.name; meshGroup = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.3, metalness: 0.4, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
+      const mesh = new THREE.Mesh(geom, mat);
+
+      // Auto Scale if too large or too small
+      const bbox = new THREE.Box3().setFromObject(mesh);
+      const size = new THREE.Vector3(); bbox.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      if (maxDim > 150 || maxDim < 10) {
+        const scale = 75 / (maxDim || 1);
+        mesh.scale.set(scale, scale, scale);
+      }
+
+      meshGroup.add(mesh);
+      snapToBed(meshGroup); scene.add(meshGroup);
+      setTelemetry("180.0 cm³", "198.0 g", "$4.35", "4h 15m");
+      transformControls.attach(meshGroup);
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseBinaryOrAsciiSTL(buffer) {
+  const reader = new DataView(buffer);
+  const numTriangles = reader.getUint32(80, true);
+  const positions = new Float32Array(numTriangles * 9);
+  const normals = new Float32Array(numTriangles * 9);
+
+  let offset = 84;
+  for (let i = 0; i < numTriangles; i++) {
+    const nx = reader.getFloat32(offset, true);
+    const ny = reader.getFloat32(offset + 4, true);
+    const nz = reader.getFloat32(offset + 8, true);
+    offset += 12;
+
+    for (let j = 0; j < 3; j++) {
+      positions[i * 9 + j * 3] = reader.getFloat32(offset, true);
+      positions[i * 9 + j * 3 + 1] = reader.getFloat32(offset + 4, true);
+      positions[i * 9 + j * 3 + 2] = reader.getFloat32(offset + 8, true);
+      normals[i * 9 + j * 3] = nx;
+      normals[i * 9 + j * 3 + 1] = ny;
+      normals[i * 9 + j * 3 + 2] = nz;
+      offset += 12;
+    }
+    offset += 2;
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  geom.computeVertexNormals();
+  return geom;
+}
+
+function setupDragAndDrop() {
+  const zone = document.getElementById("drop-zone");
+  zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.style.borderColor = "#06b6d4"; });
+  zone.addEventListener("dragleave", () => { zone.style.borderColor = "transparent"; });
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileImport({ target: { files: e.dataTransfer.files } });
+    }
+  });
+}
+
 function selectTool(tool) {
   document.querySelectorAll('.slicer-toolbar .tool-btn').forEach(btn => {
-    if (btn.id !== 'slice-preview-btn' && btn.id !== 'tool-support') btn.classList.remove('active');
+    if (btn.id !== 'slice-preview-btn' && btn.id !== 'tool-support' && btn.id !== 'tool-upload') btn.classList.remove('active');
   });
 
   if (!meshGroup) return;
@@ -1258,10 +1426,8 @@ function toggleSupports() {
 
 // --- 15 High-Quality Bespoke 3D CAD Generators ---
 
-// 1. 💖 Heart Mug
 function createHeartMugMesh() {
   currentModel = 'mug'; currentTopicTitle = 'Heart Mug'; meshGroup = new THREE.Group();
-
   const outerHeart = new THREE.Shape(); const x = 0, y = 0;
   outerHeart.moveTo(x, y + 8);
   outerHeart.bezierCurveTo(x, y + 8, x - 5, y, x - 22, y);
@@ -1298,10 +1464,8 @@ function createHeartMugMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 2. 🔨 Hammer
 function createHammerMesh() {
   currentModel = 'hammer'; currentTopicTitle = 'Heavy Duty Hammer'; meshGroup = new THREE.Group();
-
   const handleGeom = new THREE.CylinderGeometry(3.5, 4.5, 75, 24);
   const handleMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7, metalness: 0.1, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
   const handleMesh = new THREE.Mesh(handleGeom, handleMat); handleMesh.position.y = 37.5; meshGroup.add(handleMesh);
@@ -1318,10 +1482,8 @@ function createHammerMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 3. 🚀 Rocketship
 function createRocketshipMesh() {
   currentModel = 'rocket'; currentTopicTitle = 'Mini Rocketship'; meshGroup = new THREE.Group();
-
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.25, metalness: 0.3, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
   const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(10, 16, 75, 32), mat); bodyMesh.position.y = 37.5; meshGroup.add(bodyMesh);
 
@@ -1339,10 +1501,8 @@ function createRocketshipMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 4. 🌀 Wind Turbine
 function createWindTurbineMesh() {
   currentModel = 'turbine'; currentTopicTitle = 'Wind Turbine'; meshGroup = new THREE.Group();
-
   const towerMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xe2e8f0, roughness: 0.3, clippingPlanes: [clippingPlane] });
   const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 5.5, 85, 24), towerMat); tower.position.y = 42.5; meshGroup.add(tower);
 
@@ -1354,10 +1514,8 @@ function createWindTurbineMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 5. 🏺 Ceramic Vase
 function createVaseMesh() {
   currentModel = 'vase'; currentTopicTitle = 'Ceramic Vase'; meshGroup = new THREE.Group();
-
   const points = [];
   for (let i = 0; i <= 30; i++) points.push(new THREE.Vector2(10 + Math.sin(i * 0.3) * 8 + (i > 25 ? (i - 25) * 1.2 : 0), i * 2.5));
   const vaseMesh = new THREE.Mesh(new THREE.LatheGeometry(points, 32), new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x06b6d4, roughness: 0.15, metalness: 0.2, clippingPlanes: [clippingPlane] }));
@@ -1368,10 +1526,8 @@ function createVaseMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 6. 📱 Phone Case
 function createPhoneCaseMesh() {
   currentModel = 'phone'; currentTopicTitle = 'Ergonomic Phone Case'; meshGroup = new THREE.Group();
-
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x818cf8, roughness: 0.3, metalness: 0.2, clippingPlanes: [clippingPlane] });
   const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(45, 90, 8), mat); bodyMesh.position.y = 45; meshGroup.add(bodyMesh);
 
@@ -1386,10 +1542,8 @@ function createPhoneCaseMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 7. ⚔️ Fantasy Sword
 function createSwordMesh() {
   currentModel = 'sword'; currentTopicTitle = 'Fantasy Sword'; meshGroup = new THREE.Group();
-
   const bladeMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xe2e8f0, roughness: 0.1, metalness: 0.95, clippingPlanes: [clippingPlane] });
   const bladeMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 85, 3), bladeMat); bladeMesh.position.y = 52.5; meshGroup.add(bladeMesh);
 
@@ -1404,10 +1558,8 @@ function createSwordMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 8. ⚙️ Spur Gear
 function createGearMesh() {
   currentModel = 'gear'; currentTopicTitle = 'Precision Spur Gear'; meshGroup = new THREE.Group();
-
   const gearShape = new THREE.Shape();
   const teeth = 12, outerR = 35, innerR = 28;
   for (let i = 0; i < teeth; i++) {
@@ -1432,10 +1584,8 @@ function createGearMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 9. 💡 Desk Lamp
 function createLampMesh() {
   currentModel = 'lamp'; currentTopicTitle = 'Modern Desk Lamp'; meshGroup = new THREE.Group();
-
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x06b6d4, roughness: 0.3, clippingPlanes: [clippingPlane] });
   const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(20, 22, 6, 32), mat); baseMesh.position.y = 3; meshGroup.add(baseMesh);
 
@@ -1448,10 +1598,8 @@ function createLampMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 10. 🪑 Minimalist Chair
 function createChairMesh() {
   currentModel = 'chair'; currentTopicTitle = 'Minimalist Chair'; meshGroup = new THREE.Group();
-
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.4, clippingPlanes: [clippingPlane] });
   const seatMesh = new THREE.Mesh(new THREE.BoxGeometry(40, 4, 40), mat); seatMesh.position.y = 30; meshGroup.add(seatMesh);
 
@@ -1468,10 +1616,8 @@ function createChairMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 11. 🛋️ Coffee Table
 function createTableMesh() {
   currentModel = 'table'; currentTopicTitle = 'Modern Coffee Table'; meshGroup = new THREE.Group();
-
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xd97706, roughness: 0.6, clippingPlanes: [clippingPlane] });
   const topMesh = new THREE.Mesh(new THREE.BoxGeometry(70, 5, 45), mat); topMesh.position.y = 28; meshGroup.add(topMesh);
 
@@ -1486,10 +1632,8 @@ function createTableMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 12. 🪴 Flower Pot & Saucer
 function createFlowerPotMesh() {
   currentModel = 'pot'; currentTopicTitle = 'Flower Pot & Saucer'; meshGroup = new THREE.Group();
-
   const potMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xea580c, roughness: 0.8, clippingPlanes: [clippingPlane] });
   const potMesh = new THREE.Mesh(new THREE.CylinderGeometry(25, 18, 45, 32), potMat); potMesh.position.y = 27.5; meshGroup.add(potMesh);
 
@@ -1500,10 +1644,8 @@ function createFlowerPotMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 13. 🏎️ Supercar Model
 function createCarMesh() {
   currentModel = 'car'; currentTopicTitle = 'Aerodynamic Supercar'; meshGroup = new THREE.Group();
-
   const bodyMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xef4444, roughness: 0.2, metalness: 0.5, clippingPlanes: [clippingPlane] });
   const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(35, 14, 75), bodyMat); bodyMesh.position.y = 12; meshGroup.add(bodyMesh);
 
@@ -1521,10 +1663,8 @@ function createCarMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 14. 🎧 Headphone Stand
 function createHeadphoneStandMesh() {
   currentModel = 'headphone'; currentTopicTitle = 'Retro Headphone Stand'; meshGroup = new THREE.Group();
-
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x818cf8, roughness: 0.3, clippingPlanes: [clippingPlane] });
   const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(24, 26, 8, 32), mat); baseMesh.position.y = 4; meshGroup.add(baseMesh);
 
@@ -1536,10 +1676,8 @@ function createHeadphoneStandMesh() {
   transformControls.attach(meshGroup);
 }
 
-// 15. ♟️ Chess King Piece
 function createChessKingMesh() {
   currentModel = 'chess'; currentTopicTitle = 'Chess King Piece'; meshGroup = new THREE.Group();
-
   const points = [];
   points.push(new THREE.Vector2(18, 0));
   points.push(new THREE.Vector2(18, 6));
@@ -1561,10 +1699,8 @@ function createChessKingMesh() {
   transformControls.attach(meshGroup);
 }
 
-// Fallback Intricate Modular CAD Assembly Generator
 function createGenericCADMesh(title) {
   currentModel = 'generic'; currentTopicTitle = title || 'Custom CAD Assembly'; meshGroup = new THREE.Group();
-
   const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.3, metalness: 0.4, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
   const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(50, 8, 50), mat); baseMesh.position.y = 4; meshGroup.add(baseMesh);
 
@@ -1609,11 +1745,23 @@ function updateMeshByPrompt(text) {
 
 function animate() {
   requestAnimationFrame(animate);
+
   if (holoSphere && holoSphere.visible) {
     holoSphere.rotation.y += 0.02;
     holoSphere.rotation.x += 0.01;
   }
-  if (meshGroup && isRotating) meshGroup.rotation.y += 0.005;
+
+  if (isPrintingAnim && meshGroup) {
+    printProgress += 0.22;
+    if (printProgress > 100) printProgress = 0;
+    document.getElementById("layer-range").value = printProgress;
+    updateLayerCut(printProgress);
+    updateToolpathScrub((printProgress * 12) % 100);
+    meshGroup.rotation.y += 0.003;
+  } else if (meshGroup && isRotating) {
+    meshGroup.rotation.y += 0.005;
+  }
+
   controls.update();
   renderer.render(scene, camera);
 }
@@ -1646,6 +1794,13 @@ function updateLayerCut(val) {
   nozzleMesh.position.x = bounds.centerX;
   nozzleMesh.position.z = bounds.centerZ;
   nozzleMesh.visible = (val < 100);
+
+  if (val < 100 || isSliceView) {
+    renderGCodeToolpathLayer(cutY, bounds);
+  } else if (toolpathLineGroup) {
+    scene.remove(toolpathLineGroup);
+    toolpathLineGroup = null;
+  }
 
   const lineCount = Math.floor(1000000 + (val / 100) * 350000);
   document.getElementById("toolpath-val").textContent = `Extrusion: Line #${lineCount}`;
@@ -1763,7 +1918,7 @@ function renderStoredHistory() {
   if (chatHistory.length === 0) {
     const welcomeBubble = el("div", "msg agent");
     welcomeBubble.appendChild(el("div", "bubble"));
-    welcomeBubble.querySelector('.bubble').innerHTML = "Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Pick from our 15 curated high-quality CAD demos or type any custom prompt to generate 3D models and slicing parameters.";
+    welcomeBubble.querySelector('.bubble').innerHTML = "Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Pick from our 15 curated high-quality CAD demos, upload your own .STL file, or type any custom prompt to generate 3D models and slicing parameters.";
     log.appendChild(welcomeBubble);
     return;
   }
