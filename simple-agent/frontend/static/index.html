@@ -18,7 +18,7 @@
 <style>
   :root {
     --bg-dark: #070a12;
-    --panel-bg: rgba(15, 23, 42, 0.88);
+    --panel-bg: rgba(15, 23, 42, 0.92);
     --panel-border: rgba(255, 255, 255, 0.1);
     --accent-blue: #2563eb;
     --accent-cyan: #06b6d4;
@@ -115,12 +115,12 @@
   .workspace {
     flex: 1;
     display: grid;
-    grid-template-columns: 450px 1fr;
+    grid-template-columns: 440px 1fr;
     height: calc(100vh - 56px);
     overflow: hidden;
   }
 
-  /* --- Left Sidebar: Copilot Chat & Slicer --- */
+  /* --- Left Sidebar: Copilot Chat --- */
   .copilot-panel {
     background: var(--panel-bg);
     backdrop-filter: blur(16px);
@@ -349,7 +349,7 @@
     position: relative;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at 50% 50%, #0f172a 0%, #030712 100%);
+    background: radial-gradient(circle at 50% 50%, #1e293b 0%, #030712 100%);
     overflow: hidden;
   }
 
@@ -357,6 +357,42 @@
     width: 100%;
     height: 100%;
     display: block;
+  }
+
+  /* Left Vertical Slicer Tool Bar (Prusa / Bambu Style) */
+  .slicer-toolbar {
+    position: absolute;
+    top: 1.25rem;
+    left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(12px);
+    padding: 0.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--panel-border);
+    z-index: 20;
+  }
+
+  .tool-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tool-btn:hover, .tool-btn.active {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #38bdf8;
   }
 
   /* HUD Stats Overlay */
@@ -415,6 +451,34 @@
     font-weight: 700;
     color: #38bdf8;
     font-family: 'Outfit', sans-serif;
+  }
+
+  /* Layer Slice Height Scrub Bar */
+  .layer-slider-container {
+    position: absolute;
+    right: 1.25rem;
+    top: 190px;
+    bottom: 5rem;
+    width: 42px;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 0.75rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 20;
+  }
+
+  .layer-slider {
+    -webkit-appearance: slider-vertical;
+    writing-mode: bt-lr;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    accent-color: #f97316;
   }
 
   /* Floating Viewport Controls */
@@ -489,7 +553,7 @@
       <button class="clear-btn" onclick="clearHistory()">Clear Chat</button>
     </div>
 
-    <!-- Topic Input Bar (Loomin AI Style) -->
+    <!-- Topic Input Bar -->
     <div class="topic-bar">
       <span class="material-symbols-outlined" style="font-size:1.1rem; color:#38bdf8;">model_training</span>
       <input id="topic-input" class="topic-input" placeholder="3D Model Topic (e.g. heart mug, wind turbine)…" onkeydown="if(event.key==='Enter') applyTopic(this.value)">
@@ -521,6 +585,25 @@
   <!-- Right Studio Canvas: Interactive 3D WebGL Viewport -->
   <div class="viewport-container">
     <canvas id="webgl-canvas"></canvas>
+
+    <!-- Left Vertical Slicer Toolbar (Prusa / Bambu Style) -->
+    <div class="slicer-toolbar">
+      <button class="tool-btn active" title="Move (Translation)"><span class="material-symbols-outlined">open_with</span></button>
+      <button class="tool-btn" title="Rotate"><span class="material-symbols-outlined">3d_rotation</span></button>
+      <button class="tool-btn" title="Scale"><span class="material-symbols-outlined">aspect_ratio</span></button>
+      <button class="tool-btn" title="Place on Face"><span class="material-symbols-outlined">flip_to_back</span></button>
+      <button class="tool-btn" id="slice-preview-btn" title="G-Code Layer Slice Preview" onclick="toggleSlicePreview()">
+        <span class="material-symbols-outlined" style="color:#f97316;">layers</span>
+      </button>
+      <button class="tool-btn" title="Paint Supports"><span class="material-symbols-outlined">brush</span></button>
+    </div>
+
+    <!-- Layer Height Slider for G-Code Preview -->
+    <div class="layer-slider-container">
+      <span class="material-symbols-outlined" style="font-size:0.9rem; color:#f97316;">unfold_more</span>
+      <input type="range" class="layer-slider" id="layer-range" min="0" max="100" value="100" oninput="updateLayerCut(this.value)">
+      <span class="material-symbols-outlined" style="font-size:0.9rem; color:#94a3b8;">unfold_less</span>
+    </div>
 
     <!-- HUD Overlay Stats -->
     <div class="hud-overlay">
@@ -555,8 +638,8 @@
       <button class="control-btn" id="wireframe-btn" title="Toggle Wireframe" onclick="toggleWireframe()">
         <span class="material-symbols-outlined">grid_4x4</span>
       </button>
-      <button class="control-btn" id="rotate-btn" title="Toggle Rotation" onclick="toggleRotation()">
-        <span class="material-symbols-outlined">3d_rotation</span>
+      <button class="control-btn" id="rotate-btn" title="Toggle Auto-Spin" onclick="toggleRotation()">
+        <span class="material-symbols-outlined">sync</span>
       </button>
       <button class="control-btn" title="Reset Camera" onclick="resetCamera()">
         <span class="material-symbols-outlined">center_focus_strong</span>
@@ -568,19 +651,21 @@
 
 <!-- Interactive Three.js Script -->
 <script>
-let scene, camera, renderer, controls, mesh;
+let scene, camera, renderer, controls, meshGroup;
 let isWireframe = false;
-let isRotating = false; // Default stationary CAD view
+let isRotating = false;
+let isSliceView = false;
+let currentLayerPercent = 100;
 
 function init3D() {
   const container = document.querySelector('.viewport-container');
   const canvas = document.getElementById('webgl-canvas');
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x070a12);
+  scene.background = new THREE.Color(0x0f172a);
 
   camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-  camera.position.set(110, 80, 130);
+  camera.position.set(120, 100, 140);
 
   renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
   renderer.setSize(container.clientWidth, container.clientHeight);
@@ -598,23 +683,48 @@ function init3D() {
   dirLight1.position.set(100, 150, 100);
   scene.add(dirLight1);
 
-  const dirLight2 = new THREE.DirectionalLight(0xf472b6, 0.9);
+  const dirLight2 = new THREE.DirectionalLight(0xf472b6, 0.8);
   dirLight2.position.set(-100, -50, -100);
   scene.add(dirLight2);
 
-  // 3D Printer Build Plate Grid
-  const grid = new THREE.GridHelper(220, 22, 0x3b82f6, 0x1e293b);
-  grid.position.y = -20;
-  scene.add(grid);
+  // Realistic Physical PEI Magnetic Bed Plate Mesh (Prusa / Bambu Style)
+  createPEIBuildPlate();
 
   createHeartMugMesh();
   animate();
 }
 
-function createHeartMugMesh() {
-  if (mesh) scene.remove(mesh);
+function createPEIBuildPlate() {
+  const plateGroup = new THREE.Group();
 
-  const group = new THREE.Group();
+  // Dark PEI Sheet Geometry
+  const plateGeom = new THREE.BoxGeometry(220, 4, 220);
+  const plateMat = new THREE.MeshStandardMaterial({
+    color: 0x1e293b,
+    roughness: 0.8,
+    metalness: 0.2
+  });
+  const plateMesh = new THREE.Mesh(plateGeom, plateMat);
+  plateMesh.position.y = -2; // Surface rests exactly at y = 0
+  plateGroup.add(plateMesh);
+
+  // White Grid Lines on Plate Surface
+  const grid = new THREE.GridHelper(220, 22, 0x38bdf8, 0x475569);
+  grid.position.y = 0.1;
+  plateGroup.add(grid);
+
+  scene.add(plateGroup);
+}
+
+function snapToBed(group) {
+  const bbox = new THREE.Box3().setFromObject(group);
+  group.position.y = -bbox.min.y; // Bottom face sits EXACTLY on build plate at y = 0
+}
+
+function createHeartMugMesh() {
+  if (meshGroup) scene.remove(meshGroup);
+
+  meshGroup = new THREE.Group();
 
   // Outer Heart Shape
   const outerHeart = new THREE.Shape();
@@ -631,18 +741,19 @@ function createHeartMugMesh() {
   const outerGeom = new THREE.ExtrudeGeometry(outerHeart, extrudeOuter);
   outerGeom.center();
 
+  const colorMat = isSliceView ? 0xf97316 : 0xf472b6; // Orange sliced G-code vs Pink Ceramic
   const mugMat = new THREE.MeshStandardMaterial({
-    color: 0xf472b6, // Pastel Pink Ceramic/PETG
-    roughness: 0.2,
+    color: colorMat,
+    roughness: isSliceView ? 0.6 : 0.25,
     metalness: 0.1,
     wireframe: isWireframe
   });
 
   const outerMesh = new THREE.Mesh(outerGeom, mugMat);
-  outerMesh.rotation.x = -Math.PI / 2; // Standing Upright on Build Plate
-  group.add(outerMesh);
+  outerMesh.rotation.x = -Math.PI / 2; // Upright
+  meshGroup.add(outerMesh);
 
-  // Inner Hollow Cavity (Creamy Pink Interior)
+  // Inner Hollow Cavity
   const innerHeart = new THREE.Shape();
   innerHeart.moveTo(x, y + 7);
   innerHeart.bezierCurveTo(x, y + 7, x - 4, y + 2, x - 18, y + 2);
@@ -657,8 +768,8 @@ function createHeartMugMesh() {
   innerGeom.center();
 
   const innerMat = new THREE.MeshStandardMaterial({
-    color: 0xfbcfe8,
-    roughness: 0.15,
+    color: isSliceView ? 0xef4444 : 0xfbcfe8,
+    roughness: 0.2,
     metalness: 0.05,
     wireframe: isWireframe
   });
@@ -666,26 +777,25 @@ function createHeartMugMesh() {
   const innerMesh = new THREE.Mesh(innerGeom, innerMat);
   innerMesh.rotation.x = -Math.PI / 2;
   innerMesh.position.y = 2.5; // Solid 5mm base floor
-  group.add(innerMesh);
+  meshGroup.add(innerMesh);
 
   // Heart Loop Handle
   const handleTube = new THREE.TorusGeometry(14, 3.5, 16, 32, Math.PI * 1.2);
   const handleMat = new THREE.MeshStandardMaterial({
-    color: 0xf472b6,
-    roughness: 0.2,
+    color: colorMat,
+    roughness: 0.25,
     metalness: 0.1,
     wireframe: isWireframe
   });
   const handleMesh = new THREE.Mesh(handleTube, handleMat);
   handleMesh.position.set(32, 0, 0);
   handleMesh.rotation.z = -Math.PI / 6;
-  group.add(handleMesh);
+  meshGroup.add(handleMesh);
 
-  // Position flat on top of grid at y = -20
-  group.position.set(0, 1, 0);
+  // Snap model directly onto build plate surface at y = 0
+  snapToBed(meshGroup);
 
-  mesh = group;
-  scene.add(mesh);
+  scene.add(meshGroup);
 
   document.getElementById("hud-volume").textContent = "320.0 cm³";
   document.getElementById("hud-weight").textContent = "285.0 g";
@@ -694,48 +804,29 @@ function createHeartMugMesh() {
 }
 
 function createWindTurbineMesh() {
-  if (mesh) scene.remove(mesh);
+  if (meshGroup) scene.remove(meshGroup);
 
-  const group = new THREE.Group();
+  meshGroup = new THREE.Group();
   const towerGeom = new THREE.CylinderGeometry(2.5, 5, 80, 16);
-  const towerMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3, wireframe: isWireframe });
+  const towerMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0xe2e8f0, roughness: 0.3, wireframe: isWireframe });
   const tower = new THREE.Mesh(towerGeom, towerMat);
-  tower.position.y = 20;
-  group.add(tower);
+  tower.position.y = 40;
+  meshGroup.add(tower);
 
   const nacelleGeom = new THREE.CylinderGeometry(4.5, 4.5, 18, 16);
-  const nacelleMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.2, wireframe: isWireframe });
+  const nacelleMat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xef4444 : 0x38bdf8, roughness: 0.2, wireframe: isWireframe });
   const nacelle = new THREE.Mesh(nacelleGeom, nacelleMat);
   nacelle.rotation.z = Math.PI / 2;
-  nacelle.position.set(0, 60, 0);
-  group.add(nacelle);
+  nacelle.position.set(0, 80, 0);
+  meshGroup.add(nacelle);
 
-  mesh = group;
-  scene.add(mesh);
+  snapToBed(meshGroup);
+  scene.add(meshGroup);
 
   document.getElementById("hud-volume").textContent = "185.0 cm³";
   document.getElementById("hud-weight").textContent = "203.5 g";
   document.getElementById("hud-cost").textContent = "$4.48";
   document.getElementById("hud-time").textContent = "4h 30m";
-}
-
-function createDefaultGearMesh() {
-  if (mesh) scene.remove(mesh);
-  const geometry = new THREE.TorusKnotGeometry(25, 8, 120, 16);
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x2563eb,
-    roughness: 0.2,
-    metalness: 0.5,
-    wireframe: isWireframe
-  });
-  mesh = new THREE.Mesh(geometry, material);
-  mesh.position.y = 15;
-  scene.add(mesh);
-
-  document.getElementById("hud-volume").textContent = "142.5 cm³";
-  document.getElementById("hud-weight").textContent = "156.8 g";
-  document.getElementById("hud-cost").textContent = "$3.45";
-  document.getElementById("hud-time").textContent = "3h 42m";
 }
 
 function updateMeshByPrompt(text) {
@@ -744,8 +835,6 @@ function updateMeshByPrompt(text) {
     createHeartMugMesh();
   } else if (lower.includes("turbine") || lower.includes("wind")) {
     createWindTurbineMesh();
-  } else if (lower.includes("gear")) {
-    createDefaultGearMesh();
   }
 }
 
@@ -757,8 +846,8 @@ function applyTopic(val) {
 
 function animate() {
   requestAnimationFrame(animate);
-  if (mesh && isRotating) {
-    mesh.rotation.y += 0.005;
+  if (meshGroup && isRotating) {
+    meshGroup.rotation.y += 0.005;
   }
   controls.update();
   renderer.render(scene, camera);
@@ -767,8 +856,8 @@ function animate() {
 function toggleWireframe() {
   isWireframe = !isWireframe;
   document.getElementById("wireframe-btn").classList.toggle("active", isWireframe);
-  if (mesh) {
-    mesh.traverse(child => { if (child.material) child.material.wireframe = isWireframe; });
+  if (meshGroup) {
+    meshGroup.traverse(child => { if (child.material) child.material.wireframe = isWireframe; });
   }
 }
 
@@ -777,8 +866,23 @@ function toggleRotation() {
   document.getElementById("rotate-btn").classList.toggle("active", isRotating);
 }
 
+function toggleSlicePreview() {
+  isSliceView = !isSliceView;
+  document.getElementById("slice-preview-btn").classList.toggle("active", isSliceView);
+  createHeartMugMesh();
+}
+
+function updateLayerCut(val) {
+  currentLayerPercent = val;
+  if (meshGroup) {
+    const scaleY = val / 100;
+    meshGroup.scale.set(1, scaleY, 1);
+    snapToBed(meshGroup);
+  }
+}
+
 function resetCamera() {
-  camera.position.set(110, 80, 130);
+  camera.position.set(120, 100, 140);
   controls.reset();
 }
 
@@ -793,7 +897,7 @@ window.addEventListener('resize', () => {
 
 init3D();
 
-// --- Markdown Formatter & Chat History Storage ---
+// --- Markdown Formatter & Persistent Chat History ---
 function formatMarkdown(str) {
   if (!str) return "";
   let html = str;
@@ -896,7 +1000,6 @@ function renderReply(b, parts, userText) {
 
   b.innerHTML = formatMarkdown(finalText);
 
-  // Save to persistent history
   chatHistory.push({ who: "user", text: userText });
   chatHistory.push({ who: "agent", text: finalText });
   saveHistory();
