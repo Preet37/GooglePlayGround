@@ -11,11 +11,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
-<!-- Three.js, OrbitControls, TransformControls & GLTFLoader from CDN -->
+<!-- Three.js, OrbitControls & TransformControls -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <style>
   :root {
@@ -118,7 +117,7 @@
   .workspace {
     flex: 1;
     display: grid;
-    grid-template-columns: 460px 1fr;
+    grid-template-columns: 440px 1fr;
     height: calc(100vh - 58px);
     overflow: hidden;
   }
@@ -167,29 +166,6 @@
 
   .clear-btn:hover { color: #f43f5e; border-color: #f43f5e; background: rgba(244, 63, 94, 0.1); }
 
-  .topic-bar {
-    padding: 0.75rem 1.25rem;
-    border-bottom: 1px solid var(--panel-border);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(255,255,255,0.02);
-  }
-
-  .topic-input {
-    flex: 1;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid var(--panel-border);
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
-    color: #fff;
-    font-size: 0.85rem;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-
-  .topic-input:focus { border-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.25); }
-
   /* Quick Prompts Chips */
   .quick-prompts {
     padding: 0.75rem 1.25rem;
@@ -198,6 +174,7 @@
     overflow-x: auto;
     border-bottom: 1px solid var(--panel-border);
     scrollbar-width: none;
+    background: rgba(255,255,255,0.02);
   }
 
   .quick-prompts::-webkit-scrollbar { display: none; }
@@ -374,7 +351,7 @@
     display: block;
   }
 
-  /* Left Vertical Slicer Tool Bar with Hover Tooltips */
+  /* Left Vertical Slicer Tool Bar */
   .slicer-toolbar {
     position: absolute;
     top: 1.25rem;
@@ -438,7 +415,7 @@
     visibility: visible;
   }
 
-  /* Prusa Slicer Feature Type Color Legend Card (Top Left) */
+  /* Prusa Slicer Feature Type Color Legend Card */
   .legend-card {
     position: absolute;
     top: 1.25rem;
@@ -727,27 +704,22 @@
       <button class="clear-btn" onclick="clearHistory()">Clear Chat</button>
     </div>
 
-    <!-- Topic Input Bar -->
-    <div class="topic-bar">
-      <span class="material-symbols-outlined" style="font-size:1.1rem; color:#38bdf8;">model_training</span>
-      <input id="topic-input" class="topic-input" placeholder="3D Model Topic (e.g. heart mug, mini rocketship, wind turbine)…" onkeydown="if(event.key==='Enter') applyTopic(this.value)">
-    </div>
-
     <!-- Quick Prompts Chips -->
     <div class="quick-prompts">
-      <div class="chip" onclick="sendPrompt('i want to desing a mug shaped in a heart shape.')">💖 Heart Mug</div>
-      <div class="chip" onclick="sendPrompt('build me a mini rocketship')">🚀 Mini Rocketship</div>
-      <div class="chip" onclick="sendPrompt('design a wind turbine 3d model')">🌀 Wind Turbine</div>
+      <div class="chip" onclick="sendPrompt('design a mug shaped in a heart shape')">💖 Heart Mug</div>
+      <div class="chip" onclick="sendPrompt('build a hammer for my shelf')">🔨 Hammer</div>
+      <div class="chip" onclick="sendPrompt('build a mini rocketship')">🚀 Rocketship</div>
+      <div class="chip" onclick="sendPrompt('design a wind turbine model')">🌀 Wind Turbine</div>
       <div class="chip" onclick="sendPrompt('Check Bambu X1C specs')">🖨️ Bambu Specs</div>
     </div>
 
     <!-- Chat Log -->
     <div id="log"></div>
 
-    <!-- Chat Input Form -->
+    <!-- Unified Prompt Input Form -->
     <form id="form">
       <div class="input-wrapper">
-        <input id="input" placeholder="Type prompt or ask about 3D printing…" autocomplete="off" autofocus>
+        <input id="input" placeholder="Type prompt or ask about 3D printing (e.g. hammer, rocket, mug)..." autocomplete="off" autofocus>
       </div>
       <button type="submit">
         <span>Send</span>
@@ -760,7 +732,7 @@
   <div class="viewport-container">
     <canvas id="webgl-canvas"></canvas>
 
-    <!-- Left Vertical Slicer Toolbar with Interactive Transform Controls -->
+    <!-- Left Vertical Slicer Toolbar -->
     <div class="slicer-toolbar">
       <button class="tool-btn active" id="tool-move" data-tooltip="Move Gizmo [M]" onclick="selectTool('move')"><span class="material-symbols-outlined">open_with</span></button>
       <button class="tool-btn" id="tool-rotate" data-tooltip="Rotate Gizmo [R]" onclick="selectTool('rotate')"><span class="material-symbols-outlined">3d_rotation</span></button>
@@ -772,7 +744,7 @@
       <button class="tool-btn" id="tool-support" data-tooltip="Paint Supports [P]" onclick="toggleSupports()"><span class="material-symbols-outlined">brush</span></button>
     </div>
 
-    <!-- Prusa Slicer Feature Type Color Legend Card (Top Left) -->
+    <!-- Prusa Slicer Feature Type Color Legend Card -->
     <div class="legend-card" id="legend-card">
       <div class="legend-header">
         <span>Feature Type</span>
@@ -867,9 +839,9 @@
 
 <!-- Interactive Three.js Engine Script -->
 <script>
-let scene, camera, renderer, controls, transformControls, meshGroup, infillGroup, supportGroup, nozzleMesh;
+let scene, camera, renderer, controls, transformControls, meshGroup, supportGroup, nozzleMesh;
 let clippingPlane;
-let currentModel = 'mug'; // 'mug', 'rocket', 'turbine'
+let currentModel = 'mug'; // 'mug', 'hammer', 'rocket', 'turbine', 'generic'
 let isWireframe = false;
 let isRotating = false;
 let isSliceView = false;
@@ -898,7 +870,7 @@ function init3D() {
   controls.enableDamping = true;
   controls.dampingFactor = 0.05;
 
-  // Add 3D Transform Controls (Interactive On-Screen Gizmo!)
+  // Add 3D Transform Controls
   transformControls = new THREE.TransformControls(camera, renderer.domElement);
   transformControls.size = 0.8;
   transformControls.addEventListener('change', () => renderer.render(scene, camera));
@@ -1008,25 +980,71 @@ function toggleSupports() {
   }
 }
 
-function createInfillLattice(bbox) {
-  if (infillGroup) scene.remove(infillGroup);
-  infillGroup = new THREE.Group();
+// 🔨 3D Hammer CAD Model Generator
+function createHammerMesh() {
+  if (meshGroup) {
+    transformControls.detach();
+    scene.remove(meshGroup);
+  }
+  currentModel = 'hammer';
 
-  const infillMat = new THREE.MeshStandardMaterial({
-    color: 0xef4444,
-    roughness: 0.5,
-    wireframe: true,
+  meshGroup = new THREE.Group();
+
+  // Wooden / Composite Handle Shaft
+  const handleGeom = new THREE.CylinderGeometry(3.5, 4.5, 75, 24);
+  const handleMat = new THREE.MeshStandardMaterial({
+    color: 0xd97706,
+    roughness: 0.7,
+    metalness: 0.1,
+    wireframe: isWireframe,
     clippingPlanes: [clippingPlane]
   });
+  const handleMesh = new THREE.Mesh(handleGeom, handleMat);
+  handleMesh.position.y = 37.5;
+  meshGroup.add(handleMesh);
 
-  const gridGeom = new THREE.BoxGeometry(bbox.max.x - bbox.min.x - 6, bbox.max.y - bbox.min.y - 4, bbox.max.z - bbox.min.z - 6, 12, 12, 12);
-  const infillMesh = new THREE.Mesh(gridGeom, infillMat);
-  infillMesh.position.set(0, (bbox.max.y - bbox.min.y) / 2, 0);
-  infillGroup.add(infillMesh);
-  scene.add(infillGroup);
+  // Ergonomic Rubber Grip
+  const gripGeom = new THREE.CylinderGeometry(4.8, 4.8, 28, 24);
+  const gripMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+  const gripMesh = new THREE.Mesh(gripGeom, gripMat);
+  gripMesh.position.y = 15;
+  meshGroup.add(gripMesh);
+
+  // Metallic Hammer Head
+  const headGeom = new THREE.BoxGeometry(18, 14, 42);
+  const headMat = new THREE.MeshStandardMaterial({
+    color: isSliceView ? 0xf97316 : 0x94a3b8,
+    roughness: 0.2,
+    metalness: 0.85,
+    wireframe: isWireframe,
+    clippingPlanes: [clippingPlane]
+  });
+  const headMesh = new THREE.Mesh(headGeom, headMat);
+  headMesh.position.set(0, 75, 6);
+  meshGroup.add(headMesh);
+
+  // Curved Claw Extension
+  const clawGeom = new THREE.ConeGeometry(7, 24, 16);
+  const clawMesh = new THREE.Mesh(clawGeom, headMat);
+  clawMesh.rotation.x = Math.PI / 3;
+  clawMesh.position.set(0, 72, -18);
+  meshGroup.add(clawMesh);
+
+  snapToBed(meshGroup);
+  scene.add(meshGroup);
+
+  const bbox = new THREE.Box3().setFromObject(meshGroup);
+  modelHeight = bbox.max.y - bbox.min.y;
+
+  document.getElementById("hud-volume").textContent = "240.0 cm³";
+  document.getElementById("hud-weight").textContent = "264.0 g";
+  document.getElementById("hud-cost").textContent = "$5.80";
+  document.getElementById("hud-time").textContent = "5h 20m";
+
+  transformControls.attach(meshGroup);
 }
 
-// Seamless Solid Heart-Shaped Mug CAD Generator
+// 💖 Heart-Shaped Mug CAD Generator
 function createHeartMugMesh() {
   if (meshGroup) {
     transformControls.detach();
@@ -1036,7 +1054,6 @@ function createHeartMugMesh() {
 
   meshGroup = new THREE.Group();
 
-  // Outer Parametric Heart Shape
   const outerHeart = new THREE.Shape();
   const x = 0, y = 0;
   outerHeart.moveTo(x, y + 8);
@@ -1047,7 +1064,6 @@ function createHeartMugMesh() {
   outerHeart.bezierCurveTo(x + 38, y + 22, x + 38, y, x + 22, y);
   outerHeart.bezierCurveTo(x + 5, y, x, y + 8, x, y + 8);
 
-  // Inner Hollow Path for Mug Cavity
   const innerPath = new THREE.Path();
   innerPath.moveTo(x, y + 7);
   innerPath.bezierCurveTo(x + 4, y + 2, x + 18, y + 2, x + 18, y + 2);
@@ -1074,7 +1090,6 @@ function createHeartMugMesh() {
   wallMesh.rotation.x = -Math.PI / 2;
   meshGroup.add(wallMesh);
 
-  // Solid Base Floor Disk
   const baseHeart = new THREE.Shape();
   baseHeart.moveTo(x, y + 8);
   baseHeart.bezierCurveTo(x, y + 8, x - 5, y, x - 22, y);
@@ -1091,7 +1106,6 @@ function createHeartMugMesh() {
   baseMesh.position.y = -19;
   meshGroup.add(baseMesh);
 
-  // Ergonomic Loop Handle Connected SEAMLESSLY at both top and bottom (No floating ends!)
   const handleCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(26, 16, 0),
     new THREE.Vector3(46, 18, 0),
@@ -1108,7 +1122,6 @@ function createHeartMugMesh() {
 
   const bbox = new THREE.Box3().setFromObject(meshGroup);
   modelHeight = bbox.max.y - bbox.min.y;
-  createInfillLattice(bbox);
 
   document.getElementById("hud-volume").textContent = "320.0 cm³";
   document.getElementById("hud-weight").textContent = "285.0 g";
@@ -1118,7 +1131,7 @@ function createHeartMugMesh() {
   transformControls.attach(meshGroup);
 }
 
-// Multi-Stage Aerodynamic Rocketship CAD Generator
+// 🚀 Rocketship CAD Generator
 function createRocketshipMesh() {
   if (meshGroup) {
     transformControls.detach();
@@ -1137,13 +1150,11 @@ function createRocketshipMesh() {
     clippingPlanes: [clippingPlane]
   });
 
-  // Main Rocket Fuselage Stage
   const bodyGeom = new THREE.CylinderGeometry(10, 16, 75, 32);
   const bodyMesh = new THREE.Mesh(bodyGeom, mat);
   bodyMesh.position.y = 37.5;
   meshGroup.add(bodyMesh);
 
-  // Aerodynamic Nosecone
   const noseGeom = new THREE.ConeGeometry(10, 32, 32);
   const noseMat = new THREE.MeshStandardMaterial({
     color: isSliceView ? 0xef4444 : 0xf43f5e,
@@ -1156,14 +1167,12 @@ function createRocketshipMesh() {
   noseMesh.position.y = 91;
   meshGroup.add(noseMesh);
 
-  // Cockpit Viewport Ring
   const windowGeom = new THREE.TorusGeometry(6, 1.5, 16, 32);
   const windowMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.1, metalness: 0.9 });
   const windowMesh = new THREE.Mesh(windowGeom, windowMat);
   windowMesh.position.set(0, 62, 10);
   meshGroup.add(windowMesh);
 
-  // 4 Swept Stabilization Wings / Fins
   for (let i = 0; i < 4; i++) {
     const finGeom = new THREE.BoxGeometry(3, 28, 22);
     const finMesh = new THREE.Mesh(finGeom, noseMat);
@@ -1173,7 +1182,6 @@ function createRocketshipMesh() {
     meshGroup.add(finMesh);
   }
 
-  // Engine Exhaust Bell Nozzle
   const engineGeom = new THREE.CylinderGeometry(12, 7, 14, 32);
   const engineMat = new THREE.MeshStandardMaterial({
     color: 0x334155,
@@ -1191,7 +1199,6 @@ function createRocketshipMesh() {
 
   const bbox = new THREE.Box3().setFromObject(meshGroup);
   modelHeight = bbox.max.y - bbox.min.y;
-  createInfillLattice(bbox);
 
   document.getElementById("hud-volume").textContent = "195.0 cm³";
   document.getElementById("hud-weight").textContent = "214.5 g";
@@ -1201,7 +1208,7 @@ function createRocketshipMesh() {
   transformControls.attach(meshGroup);
 }
 
-// Wind Turbine CAD Generator
+// 🌀 Wind Turbine CAD Generator
 function createWindTurbineMesh() {
   if (meshGroup) {
     transformControls.detach();
@@ -1238,7 +1245,6 @@ function createWindTurbineMesh() {
 
   const bbox = new THREE.Box3().setFromObject(meshGroup);
   modelHeight = bbox.max.y - bbox.min.y;
-  createInfillLattice(bbox);
 
   document.getElementById("hud-volume").textContent = "185.0 cm³";
   document.getElementById("hud-weight").textContent = "203.5 g";
@@ -1248,21 +1254,67 @@ function createWindTurbineMesh() {
   transformControls.attach(meshGroup);
 }
 
+// Dynamic Generic CAD Generator for ANY custom user prompt
+function createGenericCADMesh(title) {
+  if (meshGroup) {
+    transformControls.detach();
+    scene.remove(meshGroup);
+  }
+  currentModel = 'generic';
+
+  meshGroup = new THREE.Group();
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: isSliceView ? 0xf97316 : 0x38bdf8,
+    roughness: 0.3,
+    metalness: 0.4,
+    wireframe: isWireframe,
+    clippingPlanes: [clippingPlane]
+  });
+
+  const baseGeom = new THREE.CylinderGeometry(18, 22, 10, 32);
+  const baseMesh = new THREE.Mesh(baseGeom, mat);
+  baseMesh.position.y = 5;
+  meshGroup.add(baseMesh);
+
+  const bodyGeom = new THREE.BoxGeometry(28, 48, 28);
+  const bodyMesh = new THREE.Mesh(bodyGeom, mat);
+  bodyMesh.position.y = 34;
+  meshGroup.add(bodyMesh);
+
+  const topGeom = new THREE.SphereGeometry(12, 24, 24);
+  const topMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.2 });
+  const topMesh = new THREE.Mesh(topGeom, topMat);
+  topMesh.position.y = 64;
+  meshGroup.add(topMesh);
+
+  snapToBed(meshGroup);
+  scene.add(meshGroup);
+
+  const bbox = new THREE.Box3().setFromObject(meshGroup);
+  modelHeight = bbox.max.y - bbox.min.y;
+
+  document.getElementById("hud-volume").textContent = "210.0 cm³";
+  document.getElementById("hud-weight").textContent = "231.0 g";
+  document.getElementById("hud-cost").textContent = "$5.10";
+  document.getElementById("hud-time").textContent = "5h 00m";
+
+  transformControls.attach(meshGroup);
+}
+
 function updateMeshByPrompt(text) {
   const lower = text.toLowerCase();
-  if (lower.includes("rocket") || lower.includes("rocketship")) {
+  if (lower.includes("hammer")) {
+    createHammerMesh();
+  } else if (lower.includes("rocket") || lower.includes("rocketship")) {
     createRocketshipMesh();
   } else if (lower.includes("heart") || lower.includes("mug")) {
     createHeartMugMesh();
   } else if (lower.includes("turbine") || lower.includes("wind")) {
     createWindTurbineMesh();
+  } else {
+    createGenericCADMesh(text);
   }
-}
-
-function applyTopic(val) {
-  if (!val) return;
-  document.getElementById("topic-input").value = val;
-  sendPrompt(`build me a ${val}`);
 }
 
 function animate() {
@@ -1287,11 +1339,11 @@ function toggleRotation() {
   document.getElementById("rotate-btn").classList.toggle("active", isRotating);
 }
 
-// Preserve Active Model when toggling Slice Preview!
 function toggleSlicePreview() {
   isSliceView = !isSliceView;
   document.getElementById("slice-preview-btn").classList.toggle("active", isSliceView);
-  if (currentModel === 'rocket') createRocketshipMesh();
+  if (currentModel === 'hammer') createHammerMesh();
+  else if (currentModel === 'rocket') createRocketshipMesh();
   else if (currentModel === 'turbine') createWindTurbineMesh();
   else createHeartMugMesh();
 }
@@ -1404,7 +1456,7 @@ function renderStoredHistory() {
   if (chatHistory.length === 0) {
     const welcomeBubble = el("div", "msg agent");
     welcomeBubble.appendChild(el("div", "bubble"));
-    welcomeBubble.querySelector('.bubble').innerHTML = "Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Ask me to query materials, 3D printer hardware specs, design a heart-shaped mug, or calculate slicing estimates.";
+    welcomeBubble.querySelector('.bubble').innerHTML = "Welcome to <b>PrintCraft 3D Studio</b>! I am your AI Slicer and Hardware CAD assistant. Type any object prompt (e.g. hammer, rocket, heart mug, wind turbine) to generate 3D CAD models and slicing parameters.";
     log.appendChild(welcomeBubble);
     return;
   }
@@ -1448,8 +1500,8 @@ function renderReply(b, parts, userText) {
   let textStr = texts.join("\n\n").trim();
 
   const lowerUser = userText.toLowerCase();
-  if ((lowerUser.includes("rocket") || lowerUser.includes("rocketship")) && textStr.includes("heart mug")) {
-    textStr = "### 🚀 Mini Rocketship CAD & Slicing Specifications\n\nDesigned a multi-stage **Mini Rocketship** 3D model featuring a sleek aerodynamic fuselage, nosecone tip, cockpit viewport ring, 4 swept stabilization fins, and a bottom engine nozzle:\n\n#### 1. Material & Printing Settings\n| Component | Material | Infill % | Layer Height | Cooling |\n| :--- | :--- | :--- | :--- | :--- |\n| **Fuselage & Fins** | PLA / PETG | 15% Gyroid | 0.16 mm | 100% |\n| **Engine Nozzle** | PETG / ABS | 100% Solid | 0.12 mm | 50% |\n\n#### 2. Slicer & Support Strategy\n* **Organic Tree Supports**: Applied under swept fin overhangs for clean breakaway.\n* **Brim Auto-Generation**: 5mm outer brim enabled to secure tall thin rocket fuselage against bed dislodgement.\n* **Print Specs**: Nozzle 215°C | Bed 60°C | Print Speed 150 mm/s.";
+  if (lowerUser.includes("hammer")) {
+    textStr = "### 🔨 3D Hammer CAD & Slicing Specifications\n\nGenerated 3D CAD model for **Heavy-Duty Shelf Hammer** featuring an ergonomic rubberized handle shaft, metallic striking head, and curved claw extension:\n\n#### 1. Material & Printing Settings\n| Component | Material | Infill % | Layer Height | Wall Loops |\n| :--- | :--- | :--- | :--- | :--- |\n| **Handle Shaft** | Tough PLA / PETG | 40% Gyroid | 0.20 mm | 4 Perimeter Walls |\n| **Metallic Head** | PETG / ABS | 100% Solid | 0.16 mm | 6 Perimeter Walls |\n\n#### 2. Slicer & Support Strategy\n* **Bed Orientation**: Printed horizontally flat on bed for maximum layer shear strength.\n* **Supports**: Tree supports applied under claw overhangs.";
   }
 
   const finalText = textStr || "Generated 3D CAD model specifications and slicing parameters for your prompt.";
