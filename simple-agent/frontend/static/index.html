@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>PrintCraft 3D Studio - AI CAD & Slicer</title>
 
 <!-- Modern Google Fonts & Icons -->
@@ -105,7 +108,7 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.35rem 0.85rem;
+    padding: 0.4rem 0.9rem;
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 600;
@@ -119,6 +122,26 @@
   .theme-toggle-btn:hover {
     background: rgba(56, 189, 248, 0.25);
     transform: translateY(-1px);
+  }
+
+  .action-btn-green {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border-color: rgba(16, 185, 129, 0.5) !important;
+    color: #10b981 !important;
+  }
+
+  .action-btn-green:hover {
+    background: rgba(16, 185, 129, 0.3) !important;
+  }
+
+  .action-btn-blue {
+    background: rgba(56, 189, 248, 0.15) !important;
+    border-color: rgba(56, 189, 248, 0.5) !important;
+    color: #38bdf8 !important;
+  }
+
+  .action-btn-blue:hover {
+    background: rgba(56, 189, 248, 0.3) !important;
   }
 
   .pill {
@@ -795,7 +818,7 @@
     gap: 0.5rem;
     background: var(--panel-bg);
     backdrop-filter: blur(16px);
-    padding: 0.45rem;
+    padding: 0.45rem 0.75rem;
     border-radius: 14px;
     border: 1px solid var(--panel-border);
     z-index: 20;
@@ -803,21 +826,23 @@
   }
 
   .control-btn {
-    width: 38px;
-    height: 38px;
+    padding: 0.4rem 0.75rem;
     border-radius: 10px;
-    border: none;
+    border: 1px solid transparent;
     background: transparent;
-    color: var(--text-muted);
+    color: var(--text-main);
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
   }
 
   .control-btn:hover, .control-btn.active {
     background: rgba(56, 189, 248, 0.25);
+    border-color: rgba(56, 189, 248, 0.5);
     color: #0284c7;
   }
 </style>
@@ -834,6 +859,14 @@
     <span>PrintCraft 3D Studio</span>
   </div>
   <div class="status-pills">
+    <button class="theme-toggle-btn action-btn-blue" onclick="triggerFileUpload()" title="Import STL/OBJ file">
+      <span class="material-symbols-outlined" style="font-size:1rem;">upload_file</span>
+      <span>Upload STL</span>
+    </button>
+    <button class="theme-toggle-btn action-btn-green" onclick="togglePrintTimelapse()" id="header-play-btn" title="Simulate 3D Printing Timelapse">
+      <span class="material-symbols-outlined" id="header-play-icon" style="font-size:1rem;">play_arrow</span>
+      <span id="header-play-text">Play Print</span>
+    </button>
     <button class="theme-toggle-btn" onclick="toggleTheme()">
       <span class="material-symbols-outlined" id="theme-icon" style="font-size:1rem;">dark_mode</span>
       <span id="theme-text">Dark</span>
@@ -908,7 +941,7 @@
     <div class="empty-plate-badge" id="empty-badge">
       <span class="material-symbols-outlined badge-icon">grid_on</span>
       <span class="badge-title">Build Plate Ready</span>
-      <span class="badge-sub">Click a prompt chip, type any CAD prompt, or drag & drop an .STL file</span>
+      <span class="badge-sub">Click a prompt chip, type any CAD prompt, or click Upload STL</span>
     </div>
 
     <!-- 5-Second Futuristic AI Generation Overlay Card -->
@@ -929,7 +962,7 @@
 
     <!-- Left Vertical Slicer Toolbar -->
     <div class="slicer-toolbar">
-      <button class="tool-btn" id="tool-upload" data-tooltip="Import STL / OBJ [U]" onclick="triggerFileUpload()"><span class="material-symbols-outlined" style="color:#38bdf8;">upload_file</span></button>
+      <button class="tool-btn" id="tool-upload" data-tooltip="Upload STL / OBJ" onclick="triggerFileUpload()"><span class="material-symbols-outlined" style="color:#38bdf8;">upload_file</span></button>
       <button class="tool-btn active" id="tool-move" data-tooltip="Move Gizmo [M]" onclick="selectTool('move')"><span class="material-symbols-outlined">open_with</span></button>
       <button class="tool-btn" id="tool-rotate" data-tooltip="Rotate Gizmo [R]" onclick="selectTool('rotate')"><span class="material-symbols-outlined">3d_rotation</span></button>
       <button class="tool-btn" id="tool-scale" data-tooltip="Scale Gizmo [S]" onclick="selectTool('scale')"><span class="material-symbols-outlined">aspect_ratio</span></button>
@@ -958,8 +991,9 @@
 
     <!-- Viewport Controls -->
     <div class="viewport-controls">
-      <button class="control-btn" id="print-anim-btn" title="Play Print Timelapse" onclick="togglePrintTimelapse()">
+      <button class="control-btn" id="print-anim-btn" title="Play 3D Print Timelapse" onclick="togglePrintTimelapse()">
         <span class="material-symbols-outlined" style="color:#10b981;">play_arrow</span>
+        <span>Play Print</span>
       </button>
       <button class="control-btn" id="wireframe-btn" title="Toggle Wireframe" onclick="toggleWireframe()">
         <span class="material-symbols-outlined">grid_4x4</span>
@@ -1239,17 +1273,17 @@ function renderGCodeToolpathLayer(cutY, bounds) {
   const segments = 48;
   for (let i = 0; i <= segments; i++) {
     const a = (i / segments) * Math.PI * 2;
-    brimPoints.push(new THREE.Vector3(cx + Math.cos(a) * (rx + 8), cutY + 0.1, cz + Math.sin(a) * (rz + 8)));
+    brimPoints.push(new THREE.Vector3(cx + Math.cos(a) * (rx + 8), cutY + 0.15, cz + Math.sin(a) * (rz + 8)));
   }
   const brimGeom = new THREE.BufferGeometry().setFromPoints(brimPoints);
-  const brimLine = new THREE.Line(brimGeom, new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2 }));
+  const brimLine = new THREE.Line(brimGeom, new THREE.LineBasicMaterial({ color: 0x22c55e, linewidth: 2.5 }));
   toolpathLineGroup.add(brimLine);
 
   // 2. Outer Perimeter Loop (Orange #f97316)
   const outerPoints = [];
   for (let i = 0; i <= segments; i++) {
     const a = (i / segments) * Math.PI * 2;
-    outerPoints.push(new THREE.Vector3(cx + Math.cos(a) * rx, cutY + 0.1, cz + Math.sin(a) * rz));
+    outerPoints.push(new THREE.Vector3(cx + Math.cos(a) * rx, cutY + 0.15, cz + Math.sin(a) * rz));
   }
   const outerGeom = new THREE.BufferGeometry().setFromPoints(outerPoints);
   const outerLine = new THREE.Line(outerGeom, new THREE.LineBasicMaterial({ color: 0xf97316, linewidth: 3 }));
@@ -1259,7 +1293,7 @@ function renderGCodeToolpathLayer(cutY, bounds) {
   const innerPoints = [];
   for (let i = 0; i <= segments; i++) {
     const a = (i / segments) * Math.PI * 2;
-    innerPoints.push(new THREE.Vector3(cx + Math.cos(a) * (rx - 2.5), cutY + 0.1, cz + Math.sin(a) * (rz - 2.5)));
+    innerPoints.push(new THREE.Vector3(cx + Math.cos(a) * (rx - 2.5), cutY + 0.15, cz + Math.sin(a) * (rz - 2.5)));
   }
   const innerGeom = new THREE.BufferGeometry().setFromPoints(innerPoints);
   const innerLine = new THREE.Line(innerGeom, new THREE.LineBasicMaterial({ color: 0xeab308, linewidth: 2 }));
@@ -1270,17 +1304,17 @@ function renderGCodeToolpathLayer(cutY, bounds) {
   const spacing = 4.5;
   for (let x = -rx + 4; x <= rx - 4; x += spacing) {
     const maxZ = Math.sqrt(Math.max(0, 1 - (x / rx) * (x / rx))) * (rz - 4);
-    infillPositions.push(cx + x, cutY + 0.1, cz - maxZ);
-    infillPositions.push(cx + x, cutY + 0.1, cz + maxZ);
+    infillPositions.push(cx + x, cutY + 0.15, cz - maxZ);
+    infillPositions.push(cx + x, cutY + 0.15, cz + maxZ);
   }
   for (let z = -rz + 4; z <= rz - 4; z += spacing) {
     const maxX = Math.sqrt(Math.max(0, 1 - (z / rz) * (z / rz))) * (rx - 4);
-    infillPositions.push(cx - maxX, cutY + 0.1, cz + z);
-    infillPositions.push(cx + maxX, cutY + 0.1, cz + z);
+    infillPositions.push(cx - maxX, cutY + 0.15, cz + z);
+    infillPositions.push(cx + maxX, cutY + 0.15, cz + z);
   }
   const infillGeom = new THREE.BufferGeometry();
   infillGeom.setAttribute('position', new THREE.Float32BufferAttribute(infillPositions, 3));
-  const infillLines = new THREE.LineSegments(infillGeom, new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 1.5 }));
+  const infillLines = new THREE.LineSegments(infillGeom, new THREE.LineBasicMaterial({ color: 0xef4444, linewidth: 2 }));
   toolpathLineGroup.add(infillLines);
 
   scene.add(toolpathLineGroup);
@@ -1291,13 +1325,20 @@ function togglePrintTimelapse() {
   if (!meshGroup) return;
   isPrintingAnim = !isPrintingAnim;
   const btn = document.getElementById("print-anim-btn");
+  const headerIcon = document.getElementById("header-play-icon");
+  const headerText = document.getElementById("header-play-text");
+
   if (isPrintingAnim) {
-    btn.classList.add("active");
-    btn.innerHTML = `<span class="material-symbols-outlined" style="color:#ef4444;">pause</span>`;
+    if (btn) { btn.classList.add("active"); btn.innerHTML = `<span class="material-symbols-outlined" style="color:#ef4444;">pause</span><span>Stop Print</span>`; }
+    if (headerIcon) headerIcon.textContent = "pause";
+    if (headerText) headerText.textContent = "Stop Print";
     printProgress = 0;
   } else {
-    btn.classList.remove("active");
-    btn.innerHTML = `<span class="material-symbols-outlined" style="color:#10b981;">play_arrow</span>`;
+    if (btn) { btn.classList.remove("active"); btn.innerHTML = `<span class="material-symbols-outlined" style="color:#10b981;">play_arrow</span><span>Play Print</span>`; }
+    if (headerIcon) headerIcon.textContent = "play_arrow";
+    if (headerText) headerText.textContent = "Play Print";
+    document.getElementById("layer-range").value = 100;
+    updateLayerCut(100);
   }
 }
 
@@ -1320,7 +1361,6 @@ function handleFileImport(event) {
       const mat = new THREE.MeshStandardMaterial({ color: isSliceView ? 0xf97316 : 0x38bdf8, roughness: 0.3, metalness: 0.4, wireframe: isWireframe, clippingPlanes: [clippingPlane] });
       const mesh = new THREE.Mesh(geom, mat);
 
-      // Auto Scale if too large or too small
       const bbox = new THREE.Box3().setFromObject(mesh);
       const size = new THREE.Vector3(); bbox.getSize(size);
       const maxDim = Math.max(size.x, size.y, size.z);
@@ -1333,6 +1373,7 @@ function handleFileImport(event) {
       snapToBed(meshGroup); scene.add(meshGroup);
       setTelemetry("180.0 cm³", "198.0 g", "$4.35", "4h 15m");
       transformControls.attach(meshGroup);
+      updateLayerCut(100);
     });
   };
   reader.readAsArrayBuffer(file);
@@ -1462,6 +1503,7 @@ function createHeartMugMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("320.0 cm³", "285.0 g", "$6.20", "6h 10m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createHammerMesh() {
@@ -1480,6 +1522,7 @@ function createHammerMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("240.0 cm³", "264.0 g", "$5.80", "5h 20m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createRocketshipMesh() {
@@ -1499,6 +1542,7 @@ function createRocketshipMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("195.0 cm³", "214.5 g", "$4.72", "4h 45m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createWindTurbineMesh() {
@@ -1512,6 +1556,7 @@ function createWindTurbineMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("185.0 cm³", "203.5 g", "$4.48", "4h 30m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createVaseMesh() {
@@ -1524,6 +1569,7 @@ function createVaseMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("275.0 cm³", "302.5 g", "$6.65", "6h 05m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createPhoneCaseMesh() {
@@ -1540,6 +1586,7 @@ function createPhoneCaseMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("110.0 cm³", "121.0 g", "$2.66", "2h 40m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createSwordMesh() {
@@ -1556,6 +1603,7 @@ function createSwordMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("140.0 cm³", "154.0 g", "$3.38", "3h 15m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createGearMesh() {
@@ -1582,6 +1630,7 @@ function createGearMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("160.0 cm³", "176.0 g", "$3.87", "3h 45m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createLampMesh() {
@@ -1596,6 +1645,7 @@ function createLampMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("210.0 cm³", "231.0 g", "$5.08", "4h 50m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createChairMesh() {
@@ -1614,6 +1664,7 @@ function createChairMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("175.0 cm³", "192.5 g", "$4.23", "4h 10m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createTableMesh() {
@@ -1630,6 +1681,7 @@ function createTableMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("260.0 cm³", "286.0 g", "$6.29", "5h 50m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createFlowerPotMesh() {
@@ -1642,6 +1694,7 @@ function createFlowerPotMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("230.0 cm³", "253.0 g", "$5.56", "5h 10m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createCarMesh() {
@@ -1661,6 +1714,7 @@ function createCarMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("290.0 cm³", "319.0 g", "$7.01", "6h 30m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createHeadphoneStandMesh() {
@@ -1674,6 +1728,7 @@ function createHeadphoneStandMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("205.0 cm³", "225.5 g", "$4.96", "4h 40m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createChessKingMesh() {
@@ -1697,6 +1752,7 @@ function createChessKingMesh() {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("150.0 cm³", "165.0 g", "$3.63", "3h 30m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function createGenericCADMesh(title) {
@@ -1712,6 +1768,7 @@ function createGenericCADMesh(title) {
   snapToBed(meshGroup); scene.add(meshGroup);
   setTelemetry("225.0 cm³", "247.5 g", "$5.40", "5h 15m");
   transformControls.attach(meshGroup);
+  updateLayerCut(100);
 }
 
 function setTelemetry(vol, weight, cost, time) {
@@ -1898,7 +1955,7 @@ function formatMarkdown(str) {
   html = html.replace(/^#### (.*$)/gim, '<h4 style="color:#0284c7; font-size:0.95rem; margin:0.5rem 0 0.25rem 0;">$1</h4>');
   html = html.replace(/^### (.*$)/gim, '<h3 style="color:#0284c7; font-size:1.05rem; margin:0.6rem 0 0.3rem 0;">$1</h3>');
   html = html.replace(/^## (.*$)/gim, '<h2 style="color:#0284c7; font-size:1.15rem; margin:0.75rem 0 0.4rem 0;">$1</h2>');
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*\*(.*?)\*\*(.*$)/g, '<strong>$1</strong>$2');
   html = html.replace(/^\* (.*$)/gim, '<li style="margin-left:1.2rem; margin-bottom:0.2rem;">$1</li>');
   return html;
 }
@@ -1963,7 +2020,7 @@ function renderReply(b, parts, userText) {
 
   const lowerUser = userText.toLowerCase();
   if (lowerUser.includes("phone") || lowerUser.includes("case")) {
-    textStr = "### 📱 Ergonomic Phone Case CAD & Slicing Specifications\n\nGenerated 3D CAD model for **Ergonomic Smartphone Case** featuring shock-absorbing TPU lip bevels, precise port cutouts, and rear camera bump protection:\n\n#### 1. Material & Printing Settings\n| Component | Material | Infill % | Layer Height | Wall Loops |\n| :--- | :--- | :--- | :--- | :--- |\n| **Case Body** | TPU 95A / Flexible PLA | 100% Solid | 0.16 mm | 5 Perimeter Walls |\n| **Rear Camera Bump** | Tough PETG | 100% Solid | 0.12 mm | 6 Perimeter Walls |\n\n#### 2. Slicer & Printing Strategy\n* **Retraction**: Disabled or minimal (1.0mm) to prevent TPU filament clogging.\n* **Print Speed**: 30 mm/s slow extrusion for flawless layer adhesion.";
+    textStr = "### 📱 Ergonomic Phone Case CAD & Slicing Specifications\n\nGenerated 3D CAD model for **Ergonomic Smartphone Case** featuring shock-absorbing TPU lip bevels, precise port cutouts, and rear camera bump protection:\n\n#### 1. Material & Printing Settings\n| Component | Material | Infill % | Layer Height | Wall Loops |\n| :--- | :--- | :--- | :--- | :--- |\n| **Case Body** | TPU 95A / Flexible PLA | 100% Solid | 0.16 mm | 5 Perimeter Walls |\n| **Rear Camera Bump** | Tough PETG | 100% Solid | 0.12 mm | 6 Perimeter Walls |\n\n#### 2. Slicing Recommendations\n* **Retraction**: Disabled or minimal (1.0mm) to prevent TPU filament clogging.\n* **Print Speed**: 30 mm/s slow extrusion for flawless layer adhesion.";
   }
 
   const finalText = textStr || `### ⚙️ 3D CAD & Slicing Analysis for: '${userText}'\n\nGenerated custom 3D CAD assembly specifications for **${userText}**:\n\n#### 1. Material & Printing Settings\n| Parameter | Setting |\n| :--- | :--- |\n| **Recommended Material** | PETG / Tough PLA |\n| **Layer Height** | 0.20 mm (Standard Quality) |\n| **Infill Density** | 20% Gyroid |\n| **Wall Loops** | 3 Perimeter Walls |\n| **Nozzle / Bed Temp** | 220°C / 60°C |\n\n#### 2. Slicing Recommendations\n* **Auto Brim**: 4mm outer brim to prevent corner warping.\n* **Cooling**: 100% fan speed for crisp top surface quality.`;
